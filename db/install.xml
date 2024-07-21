@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<XMLDB PATH="admin/tool/smsimport/db" VERSION="2024061300" COMMENT="XMLDB file for Moodle admin/tool/smsimport"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:noNamespaceSchemaLocation="../../../../lib/xmldb/xmldb.xsd"
+>
+  <TABLES>
+    <TABLE NAME="tool_sms" COMMENT="Table to store SMS configurations">
+      <FIELDS>
+        <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
+        <FIELD NAME="key" TYPE="char" LENGTH="100" NOTNULL="true" SEQUENCE="false" COMMENT="SMS ID"/>
+        <FIELD NAME="secret" TYPE="char" LENGTH="1333" NOTNULL="false" SEQUENCE="false" COMMENT="SMS secret"/>
+        <FIELD NAME="name" TYPE="char" LENGTH="1333" NOTNULL="false" SEQUENCE="false" COMMENT="Name or label for the SMS."/>
+        <FIELD NAME="timecreated" TYPE="int" LENGTH="15" NOTNULL="false" SEQUENCE="false" COMMENT="Time the SMS instance was setup"/>
+        <FIELD NAME="timemodified" TYPE="int" LENGTH="15" NOTNULL="false" SEQUENCE="false" COMMENT="Time the SMS instance was last modified."/>
+        <FIELD NAME="url1" TYPE="text" LENGTH="300" NOTNULL="false" SEQUENCE="false" COMMENT="The URL of the endpoint"/>
+        <FIELD NAME="url2" TYPE="text" LENGTH="300" NOTNULL="false" SEQUENCE="false" COMMENT="The URL of the endpoint"/>
+        <FIELD NAME="url3" TYPE="text" LENGTH="300" NOTNULL="false" SEQUENCE="false" COMMENT="The URL of the endpoint"/>
+      </FIELDS>
+      <KEYS>
+        <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
+      </KEYS>
+    </TABLE>
+    <TABLE NAME="tool_sms_school" COMMENT="Table to store school">
+      <FIELDS>
+        <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
+        <FIELD NAME="smsid" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false"/>
+        <FIELD NAME="schoolno" TYPE="char" LENGTH="10" NOTNULL="true" SEQUENCE="false" COMMENT="School ID from the SMS"/>
+        <FIELD NAME="moeid" TYPE="char" LENGTH="10" NOTNULL="false" SEQUENCE="false" COMMENT="MoE (Ministry of education) School Id"/>
+        <FIELD NAME="name" TYPE="char" LENGTH="100" NOTNULL="true" SEQUENCE="false" COMMENT="Name or label for the school."/>
+        <FIELD NAME="suspend" TYPE="int" LENGTH="1" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="1 means connection is suspended" />
+        <FIELD NAME="transferin" TYPE="int" LENGTH="1" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="Allow student data to be imported" />
+        <FIELD NAME="transferout" TYPE="int" LENGTH="1" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="Allow student data to be exported" />
+        <FIELD NAME="cohortid" TYPE="int" LENGTH="10" NOTNULL="false" SEQUENCE="false" COMMENT="The system cohort this school is constructed from"/>
+        <FIELD NAME="timecreated" TYPE="int" LENGTH="15" NOTNULL="false" SEQUENCE="false" COMMENT="Time the school instance was setup"/>
+        <FIELD NAME="timemodified" TYPE="int" LENGTH="15" NOTNULL="false" SEQUENCE="false" COMMENT="Time the school instance was last modified."/>
+      </FIELDS>
+      <KEYS>
+        <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
+        <KEY NAME="smsid" TYPE="foreign" FIELDS="smsid" REFTABLE="tool_sms" REFFIELDS="id"/>
+      </KEYS>
+    </TABLE>
+    <TABLE NAME="tool_sms_school_groups" COMMENT="Link a school to a group.">
+      <FIELDS>
+        <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
+        <FIELD NAME="schoolid" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false"/>
+        <FIELD NAME="groupid" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false"/>
+      </FIELDS>
+      <KEYS>
+        <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
+        <KEY NAME="schoolid" TYPE="foreign" FIELDS="schoolid" REFTABLE="tool_sms_school" REFFIELDS="id"/>
+        <KEY NAME="groupid" TYPE="foreign" FIELDS="groupid" REFTABLE="groups" REFFIELDS="id"/>
+      </KEYS>
+      <INDEXES>
+        <INDEX NAME="schoolid-groupid" UNIQUE="true" FIELDS="schoolid, groupid" COMMENT="Unique key"/>
+      </INDEXES>
+    </TABLE>
+    <TABLE NAME="tool_sms_school_log" COMMENT="SMS school log table">
+      <FIELDS>
+        <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
+        <FIELD NAME="schoolno" TYPE="char" LENGTH="10" NOTNULL="true" SEQUENCE="false" COMMENT="School ID from the SMS"/>
+        <FIELD NAME="target" TYPE="char" LENGTH="30" NOTNULL="true" SEQUENCE="false" COMMENT="User, group or school"/>
+        <FIELD NAME="action" TYPE="char" LENGTH="30" NOTNULL="false" SEQUENCE="false" COMMENT="Created, updated or deleted"/>
+        <FIELD NAME="error" TYPE="char" LENGTH="30" NOTNULL="false" SEQUENCE="false" COMMENT="Log exceptions thrown during import process."/>
+        <FIELD NAME="info" TYPE="text" NOTNULL="false" SEQUENCE="false" COMMENT="Additional info on the action or error."/>
+        <FIELD NAME="other" TYPE="text" NOTNULL="false" SEQUENCE="false" COMMENT="Additional info on the action or error."/>
+        <FIELD NAME="userid" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false"/>
+        <FIELD NAME="timecreated" TYPE="int" LENGTH="15" NOTNULL="true" SEQUENCE="false"/>
+        <FIELD NAME="origin" TYPE="char" LENGTH="10" NOTNULL="true" SEQUENCE="false" COMMENT="cron, web"/>
+        <FIELD NAME="ip" TYPE="char" LENGTH="45" NOTNULL="true" SEQUENCE="false" COMMENT="IP address"/>
+      </FIELDS>
+      <KEYS>
+        <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
+        <KEY NAME="schoolno" TYPE="foreign" FIELDS="schoolno" REFTABLE="tool_sms_school" REFFIELDS="schoolno"/>
+        <KEY NAME="userid" TYPE="foreign" FIELDS="userid" REFTABLE="user" REFFIELDS="id"/>
+      </KEYS>
+      <INDEXES>
+        <INDEX NAME="timecreated" UNIQUE="false" FIELDS="timecreated"/>
+        <INDEX NAME="schoolno" UNIQUE="false" FIELDS="schoolno"/>
+      </INDEXES>
+    </TABLE>
+</TABLES>
+</XMLDB>
