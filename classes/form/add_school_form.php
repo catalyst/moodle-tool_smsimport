@@ -42,12 +42,13 @@ class add_school_form extends moodleform {
         $school = $this->_customdata['school'];
         $action = $this->_customdata['action'];
 
-        // Pending: Get records from DB ?
-        $options = [];
-        //  foreach ($rows as $row) {
-              $options[1] = 'Edge';
-        //  }
-        $mform->addElement('select', 'sms', get_string('sms', 'tool_smsimport'), $options);
+        global $DB;
+        $rows = $DB->get_records('tool_sms');
+        $options = array();
+        foreach ($rows as $row) {
+            $options[$row->id] = ucwords($row->name);
+        }
+        $mform->addElement('select', 'smsid', get_string('sms', 'tool_smsimport'), $options);
 
         $mform->addElement('text', 'schoolno', get_string('schoolno', 'tool_smsimport'), 'size="20"');
         $mform->addRule('schoolno', null, 'required', null, 'client');

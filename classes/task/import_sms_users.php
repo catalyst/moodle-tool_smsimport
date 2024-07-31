@@ -43,13 +43,12 @@ class import_sms_users extends \core\task\scheduled_task {
      * Execute the task.
      */
     public function execute() {
-        // For testing
-        //  helper::import_sms_school_users(3703);
-        // Call your own api
         $params = array('suspend' => 0);
         $records = helper::get_sms_schools($params);
         foreach ($records as $record) {
-            helper::import_sms_school_users($record->schoolno);
-        }         
+            $smsusers = helper::get_sms_school_data($record);
+            helper::import_school_users($record, 'cron', $smsusers);
+        }
     }
+
 }

@@ -42,11 +42,10 @@ class edit_school_form extends moodleform {
         $school = $this->_customdata['school'];
         $action = $this->_customdata['action'];
         $schoolno = $school->schoolno;
-
         $message = '<h4>School '.$school->name. ": ". $schoolno."</h4>";
         $mform->addElement('html', '<div class="message">'.$message.'</div>');
         // Get groups from the API.
-        $smsgroups = helper::get_sms_group($schoolno);
+        $smsgroups = helper::get_sms_group($school);
         $select = $mform->addElement('select', 'groupsselect', get_string('groups', 'tool_smsimport'), $smsgroups);
         $select->setMultiple(true);
         if (!empty($school->groups)) {

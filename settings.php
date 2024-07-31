@@ -69,4 +69,9 @@ if ($hassiteconfig) {
     $page->add(new admin_setting_configtext('tool_smsimport/safeguard',
     new lang_string('safeguard', 'tool_smsimport'), new lang_string('safeguard_help', 'tool_smsimport'),
     1, PARAM_INT));
+
+    // Plugin upload page.
+    $ADMIN->add('tool_smsimport', new admin_externalpage('tool_smsimport_upload',
+    get_string('uploadusers', 'tool_smsimport'),
+    new moodle_url('/admin/tool/smsimport/upload.php')));
 }

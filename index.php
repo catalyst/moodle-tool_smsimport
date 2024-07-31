@@ -100,6 +100,7 @@ foreach ($records as $record) {
         'data-confirmation-yes-button-str' => json_encode(['delete', 'core']),
         'data-confirmation-destination' => $urldelete
     ]);
+
     $buttons = new \html_table_cell($edit. " ". $group . " ". $delete);
     $row = new \html_table_row(array($school, $buttons));
     $table->data[] = $row;
@@ -109,5 +110,10 @@ echo \html_writer::table($table);
 
 // Add button to add a new school.
 echo '<a href="' . $urladd . '" class="btn btn-secondary">' . get_string('addschool', 'tool_smsimport') . '</a>';
+
+echo html_writer::start_tag('p');
+echo "Or you can ";
+echo html_writer::link(new moodle_url('upload.php') , get_string('uploadusers', 'tool_smsimport'));
+echo html_writer::end_tag('p');
 
 echo $OUTPUT->footer();
