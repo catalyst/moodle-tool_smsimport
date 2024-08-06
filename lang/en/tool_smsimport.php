@@ -49,6 +49,7 @@ $string['suspend'] = 'Suspend connection';
 $string['delete'] = 'Delete connection';
 $string['actions'] = 'Actions';
 $string['uploadusers'] = 'Upload users via CSV';
+$string['examplecsv'] = 'Note: The <i>suspended</i> column is optional';
 $string['wrongschoolid'] = 'Wrong school ID';
 $string['errorschoolnotadded'] = 'Something went wrong the school could not be added';
 $string['errorschoolnotdeleted'] = 'School could not be deleted {a}';

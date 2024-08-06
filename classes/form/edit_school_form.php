@@ -46,7 +46,7 @@ class edit_school_form extends moodleform {
         $mform->addElement('html', '<div class="message">'.$message.'</div>');
         // Get groups from the API.
         $smsgroups = helper::get_sms_group($school);
-        $select = $mform->addElement('select', 'groupsselect', get_string('groups', 'tool_smsimport'), $smsgroups);
+        $select = $mform->addElement('autocomplete', 'groupsselect', get_string('groups', 'tool_smsimport'), $smsgroups);
         $select->setMultiple(true);
         if (!empty($school->groups)) {
             foreach($school->groups as $key => $value) {

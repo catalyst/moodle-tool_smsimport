@@ -55,7 +55,7 @@ class upload_users_form extends moodleform {
         $mform->addElement('select', 'cohortid', get_string('cohortid', 'tool_smsimport'), $cohorts);
         $mform->addRule('cohortid', null, 'required');
 
-        $mform->addElement('static', 'examplecsv', get_string('examplecsv', 'tool_uploaduser'), $link);
+        $mform->addElement('static', 'examplecsv', get_string('examplecsv', 'tool_uploaduser'), $link."<br>".get_string('examplecsv', 'tool_smsimport'));
         $mform->addHelpButton('examplecsv', 'examplecsv', 'tool_uploaduser');
 
         $mform->addElement('filepicker', 'userfile', get_string('file'));
