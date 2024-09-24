@@ -135,6 +135,7 @@ class helper  {
         if (!isset($data->transferin)) $data->transferin = 0;
         if (!isset($data->transferout)) $data->transferout = 0;
         if (!isset($data->suspend)) $data->suspend = 0;
+        $data->name = trim($data->name);
         if (!($result = $DB->update_record('tool_sms_school', $data, false))) {
             throw new \moodle_exception('errorschoolnoteditted', 'tool_smsimport');
         }
@@ -171,10 +172,10 @@ class helper  {
         global $DB;
         $data = (object)$data;
         $data->timemodified = time();
-        $result =  new \stdClass();
+        $result =  new stdClass();
         $courseid = get_config('tool_smsimport', 'smscourse');
         // Log record.
-        $logrecord = new \stdClass();
+        $logrecord = new stdClass();
         $logrecord->schoolno = $data->schoolno;
         $logrecord->target = get_string('logschool', 'tool_smsimport');
         $logsource = 'web';
@@ -236,7 +237,6 @@ class helper  {
                             $dgroupnamedisplay = str_replace($schoolname, '', $deletegroupdata->name);
                             $result->message[] =  "Unlink SMS school {$schoolname} from group: {$dgroupnamedisplay} ({$deletegroup})";
                             if ($action == 'edit') {
-                                self::delete_sms_school_groups_idnumber($data->id, $deletegroupdata->id);
                                 self::delete_sms_school_groups($data->id, $deletegroupdata->id);
                                 $info['groupremove'] = $deletegroup;
                                 $logrecord->action = get_string('logdelete', 'tool_smsimport');
@@ -253,12 +253,13 @@ class helper  {
                         break;
                     }
                     $groupname = self::find_groupname($gidnumber, $data);
-                    $groupnamedisplay = str_replace($schoolname, '', $groupname);
+                    $groupnamedisplay = str_ireplace($schoolname, '', $groupname);
                     $groupdata = groups_get_group_by_idnumber($courseid, $gidnumber);
                     // Check if groups exists in core.
                     if(!empty($groupdata)) {
                         $groupid = $groupdata->id;
                         // Update group name.
+                        $schoolname = $DB->get_field('cohort', 'name', array('id' => $cohortid));
                         $groupdata->name = $schoolname.$groupname;
                         $logaction = get_string('logupdate', 'tool_smsimport');
                     } else {
@@ -273,7 +274,6 @@ class helper  {
                                     $logaction = get_string('logupdate', 'tool_smsimport');
                                     $groupid = $record->id;
                                     $groupdata = groups_get_group($groupid);
-                                    break;
                                 }
                             }
                         } else {
@@ -285,43 +285,46 @@ class helper  {
                     // Only remove idnumbers from the groups
                     if ($action == 'edit' && isset($data->unlink) && $data->unlink) {
                         self::delete_sms_school_groups($data->id, $groupdata->id);
+                        $info['groupremove'] = $gidnumber;
+                        $logrecord->action = get_string('logdelete', 'tool_smsimport');
+                        $logrecord->info = $info;
+                        self::add_sms_log($logrecord, $logsource);
                     }
-
-                    if ($logaction == get_string('logcreate', 'tool_smsimport')) {
-                        $result->message[] =  "Link SMS school {$schoolname} to new group: {$groupnamedisplay} ({$gidnumber})";
-                        $newgroupdata = new \stdClass();
-                        $newgroupdata->courseid = $courseid;
-                        $newgroupdata->name = $schoolname."".$groupname;
-                        $newgroupdata->idnumber = $gidnumber;
-                        if($action == 'edit') {
-                            $info['groupadd'] = $gidnumber;
-                            $groupid = groups_create_group($newgroupdata);
+                    // Add/Update groups
+                    if (empty($data->unlink) && empty($deletegroups)) {
+                        $schoolname = $DB->get_field('cohort', 'name', array('id' => $cohortid));
+                        $groupname = $schoolname."".$groupname;
+                        if ($logaction == get_string('logcreate', 'tool_smsimport') ) {
+                            $result->message[] =  "Link SMS school {$schoolname} to new group: {$groupnamedisplay} ({$gidnumber})";
+                            $newgroupdata = new stdClass();
+                            $newgroupdata->courseid = $courseid;
+                            $newgroupdata->name = $groupname;
+                            $newgroupdata->idnumber = $gidnumber;
+                            if($action == 'edit') {
+                                $info['groupadd'] = $gidnumber;
+                                $groupid = groups_create_group($newgroupdata);
+                            }
                         }
-                    }
-
-                    if ($logaction == get_string('logupdate', 'tool_smsimport')) {
-                        $result->message[] =  "Link SMS school {$schoolname} to group: {$groupnamedisplay} ({$gidnumber})";
-                        $groupdata->idnumber = $gidnumber;
-                        if ($action == 'edit' && empty($deletegroups)) {
-                            /* Updating the name of the group is not covered assuming that it should manually be controlled by local_organisations.
-                            Or done via user import and added as a exception report
+                        if ($logaction == get_string('logupdate', 'tool_smsimport')) {
+                            $result->message[] =  "Link SMS school {$schoolname} to group: {$groupnamedisplay} ({$gidnumber})";
+                            $groupdata->idnumber = $gidnumber;
                             $groupdata->name = $groupname;
-                            */
-                            $info['groupupdate'] = $gidnumber;
-                            groups_update_group($groupdata);
+                            if ($action == 'edit') {
+                                $info['groupupdate'] = $gidnumber;
+                                groups_update_group($groupdata);
+                            }
                         }
-                    }
-
-                    if ($action == 'edit') {
-                        // Link groups to local organisation schools.
-                        self::save_sms_school_groups($data->id, $groupid);
-                        local_organisations_store_organisation_group($cohortid, $groupid);
-                        $data->groupid = $groupid;
-                        // Log event.
-                        if ($logaction) {
-                            $logrecord->action = $logaction;
-                            $logrecord->info = $info;
-                            self::add_sms_log($logrecord, $logsource);
+                        if ($action == 'edit') {
+                            // Link groups to local organisation schools.
+                            self::save_sms_school_groups($data->id, $groupid);
+                            local_organisations_store_organisation_group($cohortid, $groupid);
+                            $data->groupid = $groupid;
+                            // Log event.
+                            if ($logaction) {
+                                $logrecord->action = $logaction;
+                                $logrecord->info = $info;
+                                self::add_sms_log($logrecord, $logsource);
+                            }
                         }
                     }
                 } // forloop for groupselect ends.
@@ -357,6 +360,11 @@ class helper  {
      */
     public static function delete_sms_school_groups($schoolid, $groupid) {
         global $DB;
+        // Remove SMS group idnumber from core group.
+        $groupdata = groups_get_group($groupid);
+        $groupdata->idnumber = '';
+        groups_update_group($groupdata);
+        // Delete group from sms groups.
         $params = array('schoolid' => $schoolid, 'groupid' => $groupid);
         $id = $DB->get_field('tool_sms_school_groups', 'id', $params);
         if ($id) {
@@ -365,28 +373,41 @@ class helper  {
     }
 
     /**
-     * Unlink a group to a SMS school.
+     * Checks if a user has teacher's role.
      *
-     * @param int $schoolid The ID of the school
-     * @param int $groupid the ID of the group
-     * @return void
+     * @param integer $userid User ID.
+     * @param integer $courseid Course ID.
+     * @return boolean
      */
-    public static function delete_sms_school_groups_idnumber($schoolid, $groupid) {
+    public static function is_teacher($userid, $courseid) {
         global $DB;
-        $params = array('schoolid' => $schoolid, 'groupid' => $groupid);
-        $id = $DB->get_field('tool_sms_school_groups', 'id', $params);
-        if ($id) {
-            // Remove SMS group idnumber from core group.
-            $groupdata = groups_get_group($groupid);
-            $groupdata->idnumber = '';
-            groups_update_group($groupdata);
+        if(self::check_local_organisations()) {
+            $isteacher = false;
+            $context = \context_course::instance($courseid);
+            // Get roles for the course.
+            $roles = $DB->get_records_sql("SELECT DISTINCT(ra.id), r.id AS role, r.shortname
+                FROM {role_assignments} ra, {role} r
+                WHERE userid = ?
+                AND contextid = ?
+                AND r.id = ra.roleid", [$userid, $context->id]);
+            foreach ($roles as $role) {
+                if ($role->shortname == 'teacher') {
+                    $isteacher = true;
+                    break;
+                }
+            }
+        } else {
+            $isteacher = true;
         }
+        return $isteacher;
     }
 
     /**
      * Cleanup groups and other stuff from students in a SMS school.
+     * When a user is removed from a group in the external source,
+     * remove them from the group within Ideal.
      *
-     * @param string $schoolid School schoolno
+     * @param object $school School school details
      * @param string $logsource The source that executes this; cron or web.
      * @return mixed
      */
@@ -394,7 +415,7 @@ class helper  {
         global $DB;
         $nsn='national student number';
         $schoolno = $school->schoolno;
-        $user = new \stdClass();
+        $user = new stdClass();
         $courseid = get_config('tool_smsimport', 'smscourse');
         // Get SMS school config.
         $school = self::get_sms_school(array('schoolno' => $schoolno));
@@ -408,52 +429,57 @@ class helper  {
             $linebreak = "<br>";
         }
         // Log record.
-        $logrecord = new \stdClass();
+        $logrecord = new stdClass();
         $logrecord->schoolno = $schoolno;
         $logrecord->target  = get_string('loguser', 'tool_smsimport');
         $info = array();
         $logrecord->info = $info;
-
         foreach ($smsusers as $smsuser) {
+            $usernsn = ltrim($smsuser->$nsn, 0);
+            $userid = $DB->get_field('user', 'id', array('idnumber' => $usernsn));
+            $user->id = $userid;
             if ($smsuser->$nsn) {
-                $userid = $DB->get_field('user', 'id', array('idnumber' => $smsuser->$nsn));
-                $user->id = $userid;
-                $info['nsn'] = $smsuser->$nsn;
-                // User group according to the API.
-                $gidnumber = helper::find_groupidnumber($smsuser->profile_field_room, $school);
-                $smsgroupid = $DB->get_field('groups',  'id', array('idnumber' => $gidnumber));
-                // User groups in the site.
-                $usergroups = groups_get_user_groups($courseid, $userid);
-                mtrace("gidnumber {$gidnumber} smsgroupid {$smsgroupid}", $linebreak);
-
-                // If the user is not in the group the API says it should then remove the user from the group.
-                mtrace("Checking groups for user {$smsuser->$nsn} {$smsuser->firstname} {$smsuser->surname}", $linebreak);
-                $logrecord->action  = get_string('logupdate', 'tool_smsimport');
-                foreach($usergroups[0] as $usergroup) {
-                    mtrace("User {$smsuser->$nsn} groups found {$usergroup}", $linebreak);
-                    if ($smsgroupid != $usergroup) {
-                        mtrace("Matching groups for {$smsuser->$nsn}", $linebreak);
-                        $records = $DB->get_records('tool_sms_school_groups', array('groupid' => $usergroup));
-                        foreach ($records as $record) {
-                            if ($record->schoolid == $school->id) {
-                                // If the group belongs to the current school then the user has moved groups so remove old groups.
-                                mtrace("User {$smsuser->$nsn} removed from group: {$usergroup}  cohort: {$cohortid}", $linebreak);
-                                groups_remove_member($usergroup, $userid);
-                                // Log event for user changes.
-                                $info['groupremove'] = $gidnumber;
-                                $logrecord->info = $info;
-                                self::add_sms_log($logrecord, $logsource);
-                            } else {
-                                // If the group belongs to the other school that the user does not belong to then remove the orphan groups.
-                                $oldcohortid = $DB->get_field('tool_sms_school', 'cohortid', array('id' => $record->schoolid));
-                                if (!cohort_is_member($oldcohortid, $userid)) {
-                                    mtrace("User {$smsuser->$nsn} removed from group: {$usergroup} cohort: {$oldcohortid}", $linebreak);
+                mtrace("Checking groups for {$smsuser->firstname} {$smsuser->surname} {$usernsn}", $linebreak);
+                if (self::is_teacher($userid, $courseid)) {
+                    mtrace("User has teacher role, skip groups cleanup", $linebreak);
+                } else {
+                    $info['nsn'] = $usernsn;
+                    // User group according to the API.
+                    $gidnumber = helper::find_groupidnumber($smsuser->profile_field_room, $school);
+                    $smsgroupid = $DB->get_field('groups',  'id', array('idnumber' => $gidnumber));
+                    // User groups in the site.
+                    $usergroups = groups_get_user_groups($courseid, $userid);
+                    $displayusergroups = json_encode($usergroups);
+                    mtrace("Starting groups cleanup.", $linebreak);
+                    mtrace("Current user groups {$displayusergroups}", $linebreak);
+                    mtrace("SMS user group gidnumber {$gidnumber} smsgroupid {$smsgroupid}", $linebreak);
+                    $logrecord->action  = get_string('logupdate', 'tool_smsimport');
+                    foreach($usergroups[0] as $usergroup) {
+                        // If the user is not in the group the API says it should be then remove the user from the group.
+                        if ($smsgroupid != $usergroup) {
+                            $records = $DB->get_records('tool_sms_school_groups', array('groupid' => $usergroup));
+                            foreach ($records as $record) {
+                                if ($record->schoolid == $school->id) {
+                                    // If the group belongs to the current school then the user has moved groups so remove old groups.
+                                    mtrace("User {$usernsn} removed from group: {$usergroup}  cohort: {$cohortid}", $linebreak);
                                     groups_remove_member($usergroup, $userid);
                                     // Log event for user changes.
                                     $info['groupremove'] = $gidnumber;
                                     $logrecord->info = $info;
                                     $logrecord->userid = $userid;
                                     self::add_sms_log($logrecord, $logsource);
+                                } else {
+                                    // If the group belongs to the other school that the user does not belong to, then remove the orphan groups.
+                                    $oldcohortid = $DB->get_field('tool_sms_school', 'cohortid', array('id' => $record->schoolid));
+                                    if (!cohort_is_member($oldcohortid, $userid)) {
+                                        mtrace("User {$usernsn} removed from group: {$usergroup} cohort: {$oldcohortid}", $linebreak);
+                                        groups_remove_member($usergroup, $userid);
+                                        // Log event for user changes.
+                                        $info['groupremove'] = $gidnumber;
+                                        $logrecord->info = $info;
+                                        $logrecord->userid = $userid;
+                                        self::add_sms_log($logrecord, $logsource);
+                                    }
                                 }
                             }
                         }
@@ -461,6 +487,134 @@ class helper  {
                 }
             }
         }
+    }
+
+    /**
+     * Save user details / profile fields.
+     *
+     * @param object $user user details modified
+     * @param object $smsuser user details from SMS feed
+     * @param object $logrecord Log record
+     * @param string $logsource The source that executes this; cron or web
+     * @param array  $info Log record additional info
+     *
+     * @return string profile save error
+     */
+    public static function save_user_details($user, $smsuser, $logrecord, $logsource, $info) {
+        $profilefields = get_config('tool_smsimport', 'smsuserfields');
+        $profilefields = explode(',', $profilefields);
+        // Prepare user custom profile fields.
+        foreach ($profilefields as $profilefield) {
+            $profileerror = '';
+            $logrecord->error = '';
+            $logrecord->other = '';
+            $fieldname = 'profile_field_'.$profilefield;
+            if (isset($smsuser->$fieldname)) {
+                $smsprofilefield = $smsuser->$fieldname;
+            } else {
+                $smsprofilefield = '';
+            }
+            $result = self::sms_data_mapping($profilefield, $smsprofilefield);
+            $user->$fieldname = $result['data'];
+            profile_save_data($user);
+            if (!empty($result['error'])) {
+                $logrecord->error = $result['error'];
+                $logrecord->other = $logrecord->error.'help';
+                $info['profilefield'] = $profilefield. " ". $smsprofilefield;
+                $profileerror = 'lognodataprofilefield';
+            }
+        }
+        if (!empty($profileerror)) {
+            $logrecord->info = $info;
+            self::add_sms_log($logrecord, $logsource);
+        }
+        return $profileerror;
+    }
+
+    /**
+     * Transfer-in/transfer-out users from one school to another.
+     *
+     * @param object $school School details
+     * @param int    $groupid Group ID
+     * @param string $usernsn student NSN number
+     * @param string $linebreak line break
+     * @param object $logrecord Log record
+     * @param string $logsource The source that executes this; cron or web.
+     * @param array  $info Log record additional info
+     *
+     * @return string transfer error
+     */
+    public static function transfer_user_school($school, $groupid, $usernsn,
+            $linebreak, $logrecord, $logsource, $info) {
+        global $DB;
+        $transfererror = '';
+        $logrecord->error = '';
+        $logrecord->other = '';
+        $cohortid = $info['cohortid'];
+        $userid = $info['userid'];
+        // If student exists in other schools then deal with transfer-in/transfer-out
+        $otherrecords = $DB->get_records_select('cohort_members', 'cohortid != :cohortid AND userid = :userid',
+        ['cohortid' => $cohortid, 'userid' => $userid], '',  '*');
+        $otherschools = json_encode($otherrecords);
+        if (!empty($otherrecords)) {
+            mtrace("User exists in other schools {$otherschools}.", $linebreak);
+            mtrace("Start user transfer-in/transfer-out process.", $linebreak);
+            foreach($otherrecords as $otherrecord) {
+                $oldcohortid = $otherrecord->cohortid;
+                $oldschool = self::get_sms_school(array('cohortid' => $oldcohortid));
+                $info['transferin'] = $school->schoolno;
+                $info['transferout'] = $oldschool->schoolno;
+                if (empty($oldschool)) {
+                    $oldschool->schoolno = 0;
+                    $info['transferout'] = $oldschool->schoolno." ({$oldcohortid})";
+                }
+                if (isset($oldschool->transferout) && $oldschool->transferout) {
+                    if (cohort_is_member($oldschool->cohortid, $userid)) {
+                        mtrace("Successful transfer-out user from old school", $linebreak);
+                        cohort_remove_member($oldschool->cohortid, $userid);
+                    }
+                } else {
+                    mtrace("Cannot transfer-out user from old school", $linebreak);
+                    $transfererror = 'logduplicate';
+                    $logrecord->error = $transfererror;
+                    $logrecord->other = $logrecord->error.'help';
+                }
+                if (isset($school->transferin) && $school->transferin) {
+                    mtrace("Successful transfer-in user to new school", $linebreak);
+                    if (!groups_is_member($groupid, $userid)) {
+                        $info['groupadd'] = $groupid;
+                        groups_add_member($groupid, $userid);
+                        mtrace("Add {$usernsn} to group: {$groupid}", $linebreak);
+                    }
+                    if (!cohort_is_member($cohortid, $userid) && $cohortid > 0) {
+                        mtrace("Add {$usernsn} to cohort: {$cohortid}", $linebreak);
+                        cohort_add_member($cohortid, $userid);
+                    }
+                } else {
+                    mtrace("Cannot transfer-in user to new school", $linebreak);
+                    $transfererror = 'lognoregister';
+                    $logrecord->error = $transfererror;
+                    $logrecord->other = $logrecord->error.'help';
+                }
+            }
+        } else {
+            if (!cohort_is_member($cohortid, $userid) && $cohortid > 0) {
+                // We do not worry about transferin and consider this a fresh student.
+                mtrace("Add user {$usernsn} to cohort: {$cohortid}", $linebreak);
+                cohort_add_member($cohortid, $userid);
+            }
+            if (!groups_is_member($groupid, $userid)) {
+                mtrace("Checking .. if user {$usernsn} {$userid} is a member of group: {$groupid}", $linebreak);
+                $info['groupadd'] = $groupid;
+                mtrace("Add {$usernsn} to group: {$groupid}", $linebreak);
+                groups_add_member($groupid, $userid);
+            }
+        }
+        if (!empty($transfererror)) {
+            $logrecord->info = $info;
+            self::add_sms_log($logrecord, $logsource);
+        }
+        return $transfererror;
     }
 
     /**
@@ -489,35 +643,30 @@ class helper  {
         $total = 0;
         $newusers = 0;
         $updateusers = 0;
-        $profilefields = get_config('tool_smsimport', 'smsuserfields');
-        $profilefields = explode(',', $profilefields);
+        $syncerror = '';
+        $usersparsed = new stdClass();
         // Get SMS school config.
         $cohortid = $school->cohortid;
         if ($logsource == 'cron') {
             // The users are coming from an external API.
             $authtype = 'webservice';
             $linebreak = "\n";
+            $groups = helper::get_sms_school_groups($school->id, 'schoolid');
         } else {
             $authtype = 'nologin';
             $linebreak = "<br>";
-        }
-        // Log record.
-        $logrecord = new \stdClass();
-        $logrecord->schoolno = $school->schoolno;
-        $logrecord->target  = get_string('loguser', 'tool_smsimport');
-        $info = array();
-        $logrecord->info = $info;
-        $info['cohortid'] = $cohortid;
-        if ($school->schoolno) {
-            // SMS school.
-            $groups = helper::get_sms_school_groups($school->id, 'schoolid');
-        } else {
-            // Non SMS school.
             $orggroups = local_organisations_get_organisation_groups($cohortid, $courseid);
             foreach ($orggroups as $orggroup) {
                 $groups[$orggroup->id] = $orggroup->orggroupname;
             }
         }
+        // Log record.
+        $logrecord = new stdClass();
+        $logrecord->schoolno = $school->schoolno;
+        $logrecord->target  = get_string('loguser', 'tool_smsimport');
+        $info = array();
+        $logrecord->info = $info;
+        $info['cohortid'] = $cohortid;
         if (empty($groups) || $groups == false) {
             $logrecord->error = 'lognogroups';
             $logrecord->other = 'lognogroupshelp';
@@ -531,158 +680,108 @@ class helper  {
                 return false;
             }
             foreach($smsusers as $smsuser) {
-                // Reset values.
                 $logrecord->error = '';
                 $logrecord->other = '';
+                $transfererror = '';
+                $profileerror = '';
                 $total++;
-                $user = new \stdClass();
+                $usernsn = ltrim($smsuser->$nsn, 0);
+                $user = new stdClass();
                 $user->firstname = ucwords(strtolower($smsuser->firstname));
                 $user->lastname = ucwords(strtolower($smsuser->surname));
-                $user->idnumber = $smsuser->$nsn;
+                $user->idnumber = $usernsn;
                 $user->profile_field_school = $school->name;
                 $user->mnethostid = $CFG->mnet_localhost_id;
-                $user->username = $smsuser->$nsn;
-                $user->email = strtolower($user->firstname."_".$user->lastname."@invalid");
+                $firstname = clean_param($smsuser->firstname, PARAM_ALPHANUM);
+                $lastname = clean_param($smsuser->surname, PARAM_ALPHANUM);
+                $user->username = strtolower($firstname."_".$lastname);
+                $user->email = $user->username."@invalid";
                 $user->auth = $authtype;
                 $user->deleted = 0;
+                $user->confirmed = 1;
                 if (isset($smsuser->suspended) && $smsuser->suspended == 1) {
                     $user->suspended = $smsuser->suspended;
                 } else {
                     $user->suspended = 0;
                 }
-                if ($school->schoolno) {
-                    // SMS school.
-                    /* Check if user is in the group to be imported.
+                // Check if user is in the group to be imported
+                if ($logsource == 'cron') {
+                    /*  For the API import cycle.
                         We check against the group idnumber which is the groupID from the endpoint
                         We rely on the idnumber and not the name of the group.
                     */
                     $gidnumber = helper::find_groupidnumber($smsuser->profile_field_room, $school);
                     $groupid = $DB->get_field('groups',  'id', array('idnumber' => $gidnumber));
                 } else {
-                    // Non SMS school.
                     /* We have to rely on the group name for this.*/
                     $groupid = array_search($smsuser->profile_field_room, $groups);
                 }
                 if ($groupid) {
-                    mtrace ("Group found ID {$groupid} for" .  " smsuser->nsn: " .$smsuser->$nsn . " ". $smsuser->firstname . " ". $smsuser->surname, $linebreak);
+                    mtrace ("Group found ID {$groupid} for" .  " smsuser->nsn: " .$usernsn . " ". $smsuser->firstname . " ". $smsuser->surname, $linebreak);
                 } else {
-                    mtrace ("Group not found for" .  " smsuser->nsn: " .$smsuser->$nsn . " ". $smsuser->firstname . " ". $smsuser->surname, $linebreak);
+                    mtrace ("Group not found for" .  " smsuser->nsn: " .$usernsn . " ". $smsuser->firstname . " ". $smsuser->surname, $linebreak);
                 }
-                if ($groupid && $smsuser->$nsn) {
-                    $sql = "select * from {user} WHERE idnumber = :idnumber OR idnumber = :nozeroidnumber OR idnumber = :wzeroidnumber
-                    OR username = :username AND deleted = 0 AND suspended = 0";
-                    $params = array('idnumber' => $smsuser->$nsn, 'nozeroidnumber' => ltrim($smsuser->$nsn, '0'),
-                                    'wzeroidnumber' => '0'.$smsuser->$nsn, 'username' => $smsuser->$nsn);
-                    // Create/update user.
-                    if ($records = $DB->get_records_sql($sql, $params)) {
-                        count($records);
-                        $counter = 1;
-                        // If there are more than one record found then update the latest record and delete the others.
-                        foreach ($records as $record) {
-                            if ($counter != count($records)) {
-                                $logrecord->action  = get_string('logdelete', 'tool_smsimport');
-                                user_delete_user($record);
-                            } else {
-                                $userid = $record->id;
-                                $user = (object) array_merge((array) $record, (array) $user);
-                                user_update_user($user, false, false);
-                                $logrecord->action  = get_string('logupdate', 'tool_smsimport');
-                                $updateusers++;
-                                mtrace("User with idnumber {$smsuser->$nsn} updated", $linebreak);
+                if ($groupid && $usernsn) {
+                    $sql = "select * from {user} WHERE idnumber = :idnumber OR idnumber = :wzeroidnumber AND deleted = 0 AND suspended = 0";
+                    $params = array('idnumber' => $usernsn, 'wzeroidnumber' => '0'.$usernsn);
+                    $nsnvalue = $usernsn;
+                    $info['nsn'] = $nsnvalue;
+                    // If the NSN is not a duplicate in this feed.
+                    if (empty($usersparsed->$nsnvalue)) {
+                        $usersparsed->$nsnvalue = 1;
+                        // Create/update user.
+                        if ($records = $DB->get_records_sql($sql, $params)) {
+                            count($records);
+                            $counter = 1;
+                            // If there are more than one record found then update the latest record and delete the others.
+                            foreach ($records as $record) {
+                                if ($counter != count($records)) {
+                                    $logrecord->action  = get_string('logdelete', 'tool_smsimport');
+                                    user_delete_user($record);
+                                } else {
+                                    $userid = $record->id;
+                                    $user = (object) array_merge((array) $record, (array) $user);
+                                    user_update_user($user, false, false);
+                                    $logrecord->action  = get_string('logupdate', 'tool_smsimport');
+                                    $updateusers++;
+                                    mtrace("User with idnumber {$usernsn} updated", $linebreak);
+                                }
+                                $counter++;
                             }
-                            $counter++;
+                        } else {
+                            $userid = user_create_user($user, false, false);
+                            $user->id = $userid;
+                            $logrecord->action  = get_string('logcreate', 'tool_smsimport');
+                            $newusers++;
+                            mtrace("User with idnumber {$usernsn} created", $linebreak);
+                        }
+                        // The userid of the user who is being updated.
+                        $logrecord->userid = $userid;
+                        $info['userid'] = $userid;
+                        // Save user details.
+                        $profileerror = self::save_user_details($user, $smsuser, $logrecord, $logsource, $info);
+                        // School transfer-in/transfer-out.
+                        $transfererror = self::transfer_user_school($school, $groupid, $usernsn, $linebreak, $logrecord, $logsource, $info);
+                        if (!empty($transfererror) || !empty($profileerror)) {
+                            $syncerror = 'logerrorsync';
                         }
                     } else {
-                        $userid = user_create_user($user, false, false);
-                        $user->id = $userid;
-                        $logrecord->action  = get_string('logcreate', 'tool_smsimport');
-                        $newusers++;
-                        mtrace("User with idnumber {$smsuser->$nsn} created", $linebreak);
+                        $logrecord->error = 'lognsndouble';
+                        $logrecord->other = $logrecord->error.'help';
+                        // As user details are not be updated unset these values.
+                        $logrecord->action = '';
+                        $logrecord->userid = 0;
+                        unset($info['userid']);
                     }
-                    // The userid of the user who is being updated
-                    $logrecord->userid = $userid;
-                    $info['nsn'] = $smsuser->$nsn;
-                    // Prepare user custom profile fields.
-                    foreach ($profilefields as $profilefield) {
-                        $fieldname = 'profile_field_'.$profilefield;
-                        if (isset($smsuser->$fieldname)) {
-                            $smsprofilefield = $smsuser->$fieldname;
-                        }
-                        $fieldvalue = self::sms_data_mapping($profilefield, $smsprofilefield);
-                        $user->$fieldname = $fieldvalue;
+                    // Log user create/update event.
+                    if (empty($transfererror) && empty($profileerror)) {
+                        $logrecord->info = $info;
+                        self::add_sms_log($logrecord, $logsource);
                     }
-                    // Save user custom profile fields.
-                    profile_save_data($user);
-
-                    // If student exists in other schools then deal with transfer-in/transfer-out
-                    $otherrecords = $DB->get_records_select('cohort_members', 'cohortid != :cohortid AND userid = :userid',
-                    ['cohortid' => $cohortid, 'userid' => $userid], '',  '*');
-                    if (!empty($otherrecords)) {
-                        mtrace("User exists in other schools. Start user transfer-in/transfer-out process.", $linebreak);
-                        // Reset values.
-                        $transfererror = '';
-                        $logrecord->error = '';
-                        $logrecord->other = '';
-                        foreach($otherrecords as $otherrecord) {
-                            $oldcohortid = $otherrecord->cohortid;
-                            $oldschool = self::get_sms_school(array('cohortid' => $oldcohortid));
-                            $info['transferin'] = $school->schoolno;
-                            if (empty($oldschool)) {
-                                $oldschool->schoolno = 0;
-                            }
-                            $info['transferout'] = $oldschool->schoolno;
-                            if (isset($oldschool->transferout) && $oldschool->transferout) {
-                                if (cohort_is_member($oldschool->cohortid, $userid)) {
-                                    mtrace("Successful transfer-out user from old school", $linebreak);
-                                    cohort_remove_member($oldschool->cohortid, $userid);
-                                }
-                            } else {
-                                mtrace("Cannot transfer-out user from old school", $linebreak);
-                                $transfererror = 'logduplicate';
-                                $logrecord->error = $transfererror;
-                                $logrecord->other = $transfererror.'help';
-
-                            }
-                            if (isset($school->transferin) && $school->transferin) {
-                                mtrace("Successful transfer-in user to new school", $linebreak);
-                                if (!groups_is_member($groupid, $userid)) {
-                                    $info['groupadd'] = $groupid;
-                                    groups_add_member($groupid, $userid);
-                                    mtrace("Add {$smsuser->$nsn} to group: {$groupid}", $linebreak);
-                                }
-                                if (!cohort_is_member($cohortid, $userid)) {
-                                    mtrace("Add {$smsuser->$nsn} to cohort: {$cohortid}", $linebreak);
-                                    cohort_add_member($cohortid, $userid);
-                                }
-                            } else {
-                                mtrace("Cannot transfer-in user to new school", $linebreak);
-                                $transfererror = 'lognoregister';
-                                $logrecord->error = $transfererror;
-                                $logrecord->other = $transfererror.'help';
-                            }
-                        }
-                    } else {
-                        if (!cohort_is_member($cohortid, $userid)) {
-                            // We do not worry about transferin and consider this a fresh student.
-                            mtrace("Add {$smsuser->$nsn} to cohort: {$cohortid}", $linebreak);
-                            cohort_add_member($cohortid, $userid);
-                        }
-                        if (!groups_is_member($groupid, $userid)) {
-                            mtrace("Checking .. if {$smsuser->$nsn} is a member of group: {$groupid}", $linebreak);
-                            $info['groupadd'] = $groupid;
-                            mtrace("Add {$smsuser->$nsn} to group: {$groupid}", $linebreak);
-                            groups_add_member($groupid, $userid);
-                        }
-                    }
-                    // Log event for user changes.
-                    $logrecord->info = $info;
-                    self::add_sms_log($logrecord, $logsource);
-                    unset($info['transferin']);
-                    unset($info['transferout']);
                 }
             }
         }
-        // Log event for sync.
+        // Log sync event.
         $result = "Total users in source: {$total}
         Total users created in {$SITE->fullname}: {$newusers}
         Total users updated in {$SITE->fullname}: {$updateusers} ";
@@ -691,10 +790,13 @@ class helper  {
         $summary['total'] = $total;
         $summary['newusers'] = $newusers;
         $summary['updateusers'] = $updateusers;
-        if (!empty($transfererror))  {
-            $logrecord->error = 'logerrorsync';
-            $logrecord->other = 'logerrorsynchelp';
+        $logrecord->error = '';
+        $logrecord->other = '';
+        if (!empty($syncerror))  {
+            $logrecord->error = $syncerror;
+            $logrecord->other = $logrecord->error.'help';
         }
+        $logrecord->target  = get_string('logschool', 'tool_smsimport');
         $logrecord->info = $summary;
         $logrecord->userid = $USER->id; // The userid of the logged user who is running the script.
         self::add_sms_log($logrecord, $logsource, true);
@@ -749,51 +851,72 @@ class helper  {
      */
     public static function sms_data_mapping($name, $value) {
         $finalvalue = '';
+        $error = '';
         $customfield = profile_get_custom_field_data_by_shortname($name);
         if (empty($customfield)){
             $customfield = profile_get_custom_field_data_by_shortname(ucwords($name));
         }
         $name = strtolower($name);
-
         switch ($name) {
             // Format e.g. : Australian
             case "ethnicity":
-                $sitevalue = explode("\n", $customfield->param1);
-                $multiet = explode(",", $value);
-                /* If there are multiple ethnicities, take the first one and ignore the rest.
-                   as this profile field currently only supports taking a single value.
-                   */
-                $value = $multiet[0];
-                $et = explode("/", $value);
-                foreach($et as $ethnicity) {
-                    if (!$finalvalue = local_organisations_convert_ethnicity_to_category($ethnicity)) {
-                        $finalvalue = 'Unknown';
+                if (empty($value)) {
+                    $finalvalue = 'Unknown';
+                } else {
+                    $sitevalue = explode("\n", $customfield->param1);
+                    $multiet = explode(",", $value);
+                    /* If there are multiple ethnicities, take the first one and ignore the rest.
+                       as this profile field currently only supports taking a single value.
+                       */
+                    $value = $multiet[0];
+                    if (!$finalvalue = local_organisations_convert_ethnicity_to_category($value)) {
+                        $et = explode("/", $value);
+                        foreach($et as $ethnicity) {
+                            if (!$finalvalue = local_organisations_convert_ethnicity_to_category($ethnicity)) {
+                                $finalvalue = 'Unknown';
+                                $error = 1;
+                            }
+                        }
                     }
                 }
+
             break;
 
             case "gender":
                 // Formats supported: M/F, Male/Female, Tane/Wahine
                 // Format: F/M
-                $sitevalue = explode("\n", $customfield->param1);
-                if (strlen($value) == 1) {
-                    foreach ($sitevalue as $gender) {
-                        if (strpos($gender, $value) !== false) {
-                            $finalvalue = $gender;
+                if (empty($value)) {
+                    $finalvalue = 'Not Specified';
+                }
+                if ($finalvalue == 'Not Specified') {
+                    $error = 1;
+                } else {
+                    $value = ucwords($value);
+                    $value = str_replace('Tane', 'Male', $value);
+                    $value = str_replace('Wahine', 'Female', $value);
+                    $value = str_replace('Tāne', 'Male', $value);
+                    $value = str_replace('Wāhine', 'Female', $value);
+                    $sitevalue = explode("\n", $customfield->param1);
+                    if (strlen($value) == 1) {
+                        foreach ($sitevalue as $gender) {
+                            if (strpos($gender, $value) !== false) {
+                                $finalvalue = $gender;
+                            }
+                        }
+                    } else {
+                        // Format: Female or Male / Tāne
+                        $value = explode(" / ", $value);
+                        $common = array_intersect($sitevalue, $value);
+                        if ($common) {
+                            // Get first value common in the two arrays.
+                            $finalvalue = reset($common);
+                        } else {
+                            // Get last value set in the profile field.
+                            $finalvalue = end($sitevalue);
                         }
                     }
-                } else {
-                    // Format: Female or Male / Tāne
-                    $value = explode(" / ", $value);
-                    $common = array_intersect($sitevalue, $value);
-                    if ($common) {
-                        // Get first value common in the two arrays.
-                        $finalvalue = reset($common);
-                    } else {
-                        // Get last value set in the profile field.
-                        $finalvalue = end($sitevalue);
-                    }
                 }
+
             break;
 
             case "year":
@@ -804,14 +927,14 @@ class helper  {
                     10 => 'ten', 11 => 'eleven', 12 => 'twelve', 13 => 'thirteen'
                 );
                 $value = strtolower($value);
-                if((int)($value)){
+                if ((int)($value)){
                     $finalvalue = $value;
                 } else {
                     if(strpos($value, 'year') !== false) {
-                    $finalvalue = str_replace('year', '', $value) ;
+                    $finalvalue = str_replace('year', '', $value);
                     }
                     elseif(strpos($value, 'y') !== false) {
-                    $finalvalue = str_replace('y', '', $value) ;
+                    $finalvalue = str_replace('y', '', $value);
                     }
                     elseif(($key = array_search($value, $yearinwords)) != 0) {
                     $finalvalue = $key;
@@ -821,31 +944,47 @@ class helper  {
             break;
 
             case "dob":
-                // Formats supported: 2019-03-25 | 2019/03/25 | 25-03-2019 | 25/03/2019
+                // Formats supported: 2019-03-25 | 2019/03/25 | 25-03-2019 | 25/03/2019 | 25.03.2019 | 25.03.2019 | 25 Nov 2019 | 25 November 2015
+                if (strpos($value, ".") !== false) {
+                    $value = str_replace('.', '-', $value);
+                }
                 if (strpos($value, "/") !== false) {
-                    $value = explode("/", $value);
-                    echo strlen($value[2]);
-                    if (strlen($value[0]) == 4) {
-                        $year = $value[0];
-                        $day = $value[2];
-                    } else if (strlen($value[2]) == 4) {
-                        $year = $value[2];
-                        $day = $value[0];
-                    } else {
-                        throw new \moodle_exception('invaliddobformat', 'tool_smsimport');
+                    $value = str_replace('/', '-', $value);
+                }
+                if (strpos($value, "-") !== false) {
+                    $val = explode("-", $value);
+                    if (strlen($val[0]) <= 2 && strlen($val[2]) == 2) {
+                        $value = $val[0].'-'.$val[1].'-20'.$val[2];
                     }
-                    $month = $value[1];
-                    $finalvalue = $year.'-'.$month.'-'.$day;
+                }
+                $tdate = strtotime($value);
+                if ($tdate) {
+                    $finalvalue = date("Y-m-d", $tdate);
                 } else {
-                    $finalvalue = $value;
+                    $finalvalue = 0;
+                    $error = 1;
                 }
             break;
 
-            default:
+            case "room":
                 $finalvalue = $value;
+            break;
+
+            default:
+            $finalvalue = $value;
+
             }
 
-            return $finalvalue;
+            if ($error == 1) {
+                $error = 'logmapping';
+            }
+
+            $result = array(
+                'data' => $finalvalue,
+                'error' => $error
+            );
+
+            return $result;
         }
 
     /**
@@ -882,13 +1021,7 @@ class helper  {
                         }
                         break;
                     case 'etap':
-                        // This ideally should come from SMS endpoint to retrive groups;
-                        $response->getgroups = 'testdata';
-                        $testdata = array(
-                            $schoolno.'110011' => 'Room 1',
-                            $schoolno.'110012' => 'Room 2'
-                        );
-                        $smsgroups = $testdata;
+                        $smsgroups = self::get_etap_data($response->access_token, $school->schoolno, $response->getgroups, 'groups');
                         break;
                 }
                 self::$smsgroups[$schoolno] = $smsgroups;
@@ -898,7 +1031,7 @@ class helper  {
             return $smsgroups;
         } else {
             // Log error.
-            $logrecord = new \stdClass();
+            $logrecord = new stdClass();
             $logrecord->schoolno = $schoolno;
             $logrecord->target = get_string('logschool', 'tool_smsimport');
             $logrecord->action = get_string('logsync', 'tool_smsimport');
@@ -927,10 +1060,10 @@ class helper  {
         $record = $DB->get_record('tool_sms', $param);
         $getusers = $record->url2;
         $getgroups = $record->url3;
-        // Get Token to access the API endpoint.
         $curl = new \curl();
         switch ($record->name) {
             case 'edge':
+                // Get token.
                 $params = "grant_type=school&appId={$record->key}&appSecret={$record->secret}&schoolNo={$school->schoolno}";
                 $response = $curl->put($record->url1, $params);
                 $response = json_decode($response);
@@ -941,10 +1074,12 @@ class helper  {
                 $options = [
                     'CURLOPT_USERPWD' => 'ignore:me',
                 ];
-                $curl = new \curl();
                 // Get token.
                 $accesstoken = $curl->get($url, NULL, $options);
-                $response = self::get_etap_data($accesstoken, $school->schoolno, $getusers);
+                /* ETAP does not validate against a school in step 1 hence
+                * we need to retrieve data early for validation purpose.
+                */
+                $response = self::get_etap_data($accesstoken, $school->schoolno, $getusers, 'users');
                 $response->access_token = $accesstoken;
                 break;
         }
@@ -957,35 +1092,64 @@ class helper  {
         }
     }
 
-    // Get user data. We need this to check if the endpoint is valid.
     /**
      * Get user data from SMS ETAP.
-     * ETAP does not validation against a school in step 1 hence
-     * we need to retrieve data early for validation purpose.
+
+     * Data from ETAP is in text format.
+     * ETAP uses the same URL to retrieve users and groups depending on parameters sent.
      *
      * @param string $accesstoken The access token.
      * @param int $schoolno The SMS school no.
      * @param string $url The endpoint to get data.
+     * @param string $datatype users or groups
      * @return object Get data or error from the endpoint
      */
-    public static function  get_etap_data($accesstoken, $schoolno, $url) {
-        $response = new stdClass();
-        $params = "k={$accesstoken}&m={$schoolno}";
-        $url = "{$url}?{$params}";
-        $options = [
-            'CURLOPT_USERPWD' => 'ignore:me',
-        ];
+    public static function  get_etap_data($accesstoken, $schoolno, $url, $datatype) {
         $curl = new \curl();
-        $text  = $curl->get($url, NULL, $options);
-        // The endpoint returns string with 'mlep' in the headers.
-        if(strpos($text, 'mlep') !== false) {
-            $response->error = NULL;
-            $response->data = $text;
-        } else {
-            $response->error = $text;
-            $response->data = NULL;
+        if ($datatype == 'users') {
+            $response = new stdClass();
+            $params = "k={$accesstoken}&m={$schoolno}";
+            $url = "{$url}?{$params}";
+            $options = [
+                'CURLOPT_USERPWD' => 'ignore:me',
+            ];
+            $text  = $curl->get($url, NULL, $options);
+            // The endpoint returns string with 'mlep' in the headers.
+            if(strpos($text, 'mlep') !== false) {
+                $response->error = NULL;
+                $response->data = $text;
+            } else {
+                $response->error = $text;
+                $response->data = NULL;
+            }
+            return $response;
+        } else if ($datatype == 'groups') {
+            $params = "k={$accesstoken}&m={$schoolno}&SendRooms=1";
+            $url = "{$url}?{$params}";
+            $options = [
+                'CURLOPT_USERPWD' => 'ignore:me',
+            ];
+            $text  = $curl->get($url, NULL, $options);
+            //print "<pre>";print_r($text);print"</pre>";
+            // The endpoint returns string with 'Room' in the headers.
+            if(strpos($text, 'Room') !== false) {
+                $groups = $text;
+                $text = preg_replace('!\r\n?!', "\n", $groups);
+                $importid = \csv_import_reader::get_new_iid('groupsimport');
+                $csvimport = new \csv_import_reader($importid, 'groupsimport');
+                $csvimport->load_csv_content($text, 'UTF-8', ',');
+                $csvimport->init();
+                $groups = array();
+                while ($line = $csvimport->next()) {
+                    //print "<pre>";print_r($line);print"</pre>";
+                    $groupidnumber = $schoolno.''.$line[0];
+                    $groupname = $line[1];
+                    $groups[$groupidnumber] = $groupname;
+                }
+                $csvimport->close();
+                return $groups;
+            }
         }
-        return $response;
     }
 
     /**
@@ -1177,10 +1341,12 @@ class helper  {
      *
      * @param mixed $data object or string.
      * @param array $options the attributes of the data.
+     * @param object $school school details.
      * @return array $users A list of users.
      * @throws moodle_exception
      */
-    public static function parse_data($data, $options) {
+    public static function parse_data($data, $options, $school) {
+        global $DB;
         $required = array(
             "firstname" => 1,
             "surname" => 1,
@@ -1246,8 +1412,24 @@ class helper  {
                         E.g. Room1#Y6
                         */
                         if ($label == 'profile_field_year') {
-                            $value = explode('#', $value);;
+                            $value = explode('#', $value);
                             $value =  end($value);
+                        }
+                        if ($options['source'] == 'web' && $label == 'profile_field_room') {
+                            // Create group if it does not exist.
+                            $courseid = get_config('tool_smsimport', 'smscourse');
+                            $schoolname = $DB->get_field('cohort', 'name', array('id' => $school->cohortid));
+                            $groupname = $schoolname.$value;
+                            $groupid = groups_get_group_by_name($courseid, $groupname);
+                            if (empty($groupid)) {
+                                $newgroupdata = new stdClass();
+                                $newgroupdata->courseid = $courseid;
+                                $newgroupdata->name = $groupname;
+                                $groupid = groups_create_group($newgroupdata);
+                                if (self::check_local_organisations()) {
+                                    local_organisations_store_organisation_group($school->cohortid, $groupid);
+                                }
+                            }
                         }
                         $user->$label = trim($value);
                     }
@@ -1279,7 +1461,7 @@ class helper  {
     /**
      * Get SMS school data from API.
      *
-     * @param string $schoolid School schoolno
+     * @param object $school School details
      * @return mixed array or throw exception
      * @throws moodle_exception
      */
@@ -1305,7 +1487,7 @@ class helper  {
                             'format' => 'json',
                             'source' => 'cron'
                         );
-                        $records = self::parse_data($data, $options);
+                        $records = self::parse_data($data, $options, $school);
                     }  else {
                         $error = $data->error;
                     }
@@ -1319,7 +1501,7 @@ class helper  {
                             'encoding' => 'UTF-8',
                             'source' => 'cron'
                         );
-                        $records = self::parse_data($response->data, $options);
+                        $records = self::parse_data($response->data, $options, $school);
                     } else {
                         $error = $response->error;
                     }
@@ -1329,7 +1511,7 @@ class helper  {
                 return $records;
             } else {
                 // Log error.
-                $logrecord = new \stdClass();
+                $logrecord = new stdClass();
                 $logrecord->schoolno = $school->schoolno;
                 $logrecord->target = get_string('logschool', 'tool_smsimport');
                 $logrecord->action = get_string('logsync', 'tool_smsimport');
@@ -1356,6 +1538,7 @@ class helper  {
         $data->timemodified = time();
         // Check API for school details
         $response = self::get_sms_token($data);
+        $data->name = trim($data->name);
         if (empty($response->error)) {
             return $DB->insert_record('tool_sms_school', $data, true, false);
         } else {
@@ -1395,7 +1578,7 @@ class helper  {
             throw new \moodle_exception('errorschoolnotdeleted', 'tool_smsimport', $e);
         }
         // Log record.
-        $logrecord = new \stdClass();
+        $logrecord = new stdClass();
         $logrecord->schoolno = $smsschool->schoolno;
         $logrecord->target  = get_string('logschool', 'tool_smsimport');
         $logrecord->action  = get_string('logdelete', 'tool_smsimport');

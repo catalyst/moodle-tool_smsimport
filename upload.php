@@ -27,7 +27,9 @@ use tool_smsimport\helper;
 
 require_once('../../../config.php');
 require_once($CFG->libdir . '/adminlib.php');
-admin_externalpage_setup('tool_smsimport_upload');
+
+defined('MOODLE_INTERNAL') || die();
+admin_externalpage_setup('tool_smsimport_index');
 
 global $PAGE;
 
@@ -80,7 +82,7 @@ if ($importform->is_cancelled()) {
         'encoding' => $formdata->encoding,
         'source' => 'web'
     );
-    $records = helper::parse_data($text, $options);
+    $records = helper::parse_data($text, $options, $school);
     $result = helper::import_school_users($school, 'web', $records);
     if ($result) {
         echo html_writer::start_tag('p');

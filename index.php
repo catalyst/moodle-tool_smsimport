@@ -24,6 +24,8 @@
 
 require_once('../../../config.php');
 require_once($CFG->libdir . '/adminlib.php');
+
+defined('MOODLE_INTERNAL') || die();
 admin_externalpage_setup('tool_smsimport_index');
 
 global $PAGE, $DB;
@@ -85,7 +87,7 @@ foreach ($records as $record) {
     $urldelete->params(array('id' => $record->id));
     $urledit->params(array('id' => $record->id));
     $urlgroup->params(array('id' => $record->id));
-    $school = new \html_table_cell($record->name);
+    $school = new \html_table_cell($record->schoolno ." ". $record->name);
     $edit = \html_writer::link($urledit, get_string('edit'),  [
         'class' => 'btn btn-primary',
     ]);

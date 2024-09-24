@@ -43,14 +43,22 @@ class cleanup_sms_users extends \core\task\scheduled_task {
      * Execute the task.
      */
     public function execute() {
-        /* For testing.
-        helper::cleanup_sms_school_users(999);
-        */
+    /* For testing.
+        $params = array('suspend' => 0, 'schoolno' => 3703);
+        $records = helper::get_sms_schools($params);
+        foreach ($records as $record) {
+            if ($record->cohortid > 0) {
+                helper::cleanup_sms_school_users($record);
+            }
+        }
+    */
         // Call your own api
         $params = array('suspend' => 0);
         $records = helper::get_sms_schools($params);
         foreach ($records as $record) {
-            helper::cleanup_sms_school_users($record);
+            if ($record->cohortid > 0) {
+                helper::cleanup_sms_school_users($record);
+            }
         }
     }
 }

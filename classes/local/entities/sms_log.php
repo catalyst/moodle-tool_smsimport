@@ -27,6 +27,7 @@ namespace tool_smsimport\local\entities;
 use core_reportbuilder\local\filters\date;
 use core_reportbuilder\local\filters\number;
 use core_reportbuilder\local\filters\select;
+use core_reportbuilder\local\filters\autocomplete;
 use core_reportbuilder\local\filters\text;
 use core_reportbuilder\local\helpers\format;
 use lang_string;
@@ -245,7 +246,7 @@ class sms_log extends base {
 
         // Error filter.
         $filters[] = (new filter(
-            select::class,
+            autocomplete::class,
             'error',
             new lang_string('error', 'tool_smsimport'),
             $this->get_entity_name(),
@@ -257,6 +258,9 @@ class sms_log extends base {
             'logduplicate' => new lang_string('logduplicate', 'tool_smsimport'),
             'lognodata' => new lang_string('lognodata', 'tool_smsimport'),
             'lognogroups' => new lang_string('lognogroups', 'tool_smsimport'),
+            'logmapping' => new lang_string('logmapping', 'tool_smsimport'),
+            'lognsndouble' => new lang_string('lognsndouble', 'tool_smsimport'),
+            'logerrorsync' => new lang_string('logerrorsync', 'tool_smsimport'),
         ]);
 
         // Info filter.

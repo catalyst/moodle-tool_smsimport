@@ -43,11 +43,23 @@ class import_sms_users extends \core\task\scheduled_task {
      * Execute the task.
      */
     public function execute() {
+        /* For testing.
+        $params = array('suspend' => 0, 'schoolno' => 1659);
+        $records = helper::get_sms_schools($params);
+        foreach ($records as $record) {
+            if ($record->cohortid > 0) {
+                $smsusers = helper::get_sms_school_data($record);
+                helper::import_school_users($record, 'cron', $smsusers);
+            }
+        }
+        */
         $params = array('suspend' => 0);
         $records = helper::get_sms_schools($params);
         foreach ($records as $record) {
-            $smsusers = helper::get_sms_school_data($record);
-            helper::import_school_users($record, 'cron', $smsusers);
+            if ($record->cohortid > 0) {
+                $smsusers = helper::get_sms_school_data($record);
+                helper::import_school_users($record, 'cron', $smsusers);
+            }
         }
     }
 
