@@ -403,9 +403,7 @@ class helper  {
     }
 
     /**
-     * Cleanup groups and other stuff from students in a SMS school.
-     * When a user is removed from a group in the external source,
-     * remove them from the group within Ideal.
+     * Cleanup groups and other stuff from students in a SMS school.     *
      *
      * @param object $school School school details
      * @param string $logsource The source that executes this; cron or web.
@@ -414,75 +412,94 @@ class helper  {
     public static function cleanup_sms_school_users($school, $logsource = 'cron') {
         global $DB;
         $nsn='national student number';
-        $schoolno = $school->schoolno;
-        $user = new stdClass();
-        $courseid = get_config('tool_smsimport', 'smscourse');
-        // Get SMS school config.
-        $school = self::get_sms_school(array('schoolno' => $schoolno));
-        $cohortid = $school->cohortid;
-        // Get users from the external API.
-         $smsusers = self::get_sms_school_data($school);
-        //$smsusers = self::get_sms_school_data_test($schoolno);
-        if ($logsource == 'cron') {
-            $linebreak = "\n";
-        } else {
-            $linebreak = "<br>";
-        }
-        // Log record.
+        $smsusersnsn = array();
+        $linebreak = ($logsource == 'cron') ? "\n" : "<br>";
         $logrecord = new stdClass();
-        $logrecord->schoolno = $schoolno;
+        $logrecord->schoolno = $school->schoolno;
         $logrecord->target  = get_string('loguser', 'tool_smsimport');
-        $info = array();
-        $logrecord->info = $info;
+
+        mtrace("Checking current users groups for school {$school->schoolno} ", $linebreak);
+        // Get users from the external API.
+        $smsusers = self::get_sms_school_data($school);
         foreach ($smsusers as $smsuser) {
-            $usernsn = ltrim($smsuser->$nsn, 0);
-            $userid = $DB->get_field('user', 'id', array('idnumber' => $usernsn));
-            $user->id = $userid;
             if ($smsuser->$nsn) {
-                mtrace("Checking groups for {$smsuser->firstname} {$smsuser->surname} {$usernsn}", $linebreak);
-                if (self::is_teacher($userid, $courseid)) {
-                    mtrace("User has teacher role, skip groups cleanup", $linebreak);
-                } else {
-                    $info['nsn'] = $usernsn;
-                    // User group according to the API.
+                $smsuser->$nsn = ltrim($smsuser->$nsn, 0);
+                $smsuser->lastname = $smsuser->surname;
+                $smsusersnsn[] = $smsuser->$nsn;
+                $userid = $DB->get_field('user', 'id', array('idnumber' => $smsuser->$nsn, 'auth' => 'webservice'));
+                if (!empty($userid)) {
+                    $smsuser->userid = $userid;
                     $gidnumber = helper::find_groupidnumber($smsuser->profile_field_room, $school);
                     $smsgroupid = $DB->get_field('groups',  'id', array('idnumber' => $gidnumber));
-                    // User groups in the site.
-                    $usergroups = groups_get_user_groups($courseid, $userid);
-                    $displayusergroups = json_encode($usergroups);
-                    mtrace("Starting groups cleanup.", $linebreak);
-                    mtrace("Current user groups {$displayusergroups}", $linebreak);
-                    mtrace("SMS user group gidnumber {$gidnumber} smsgroupid {$smsgroupid}", $linebreak);
-                    $logrecord->action  = get_string('logupdate', 'tool_smsimport');
-                    foreach($usergroups[0] as $usergroup) {
-                        // If the user is not in the group the API says it should be then remove the user from the group.
-                        if ($smsgroupid != $usergroup) {
-                            $records = $DB->get_records('tool_sms_school_groups', array('groupid' => $usergroup));
-                            foreach ($records as $record) {
-                                if ($record->schoolid == $school->id) {
-                                    // If the group belongs to the current school then the user has moved groups so remove old groups.
-                                    mtrace("User {$usernsn} removed from group: {$usergroup}  cohort: {$cohortid}", $linebreak);
-                                    groups_remove_member($usergroup, $userid);
-                                    // Log event for user changes.
-                                    $info['groupremove'] = $gidnumber;
-                                    $logrecord->info = $info;
-                                    $logrecord->userid = $userid;
-                                    self::add_sms_log($logrecord, $logsource);
-                                } else {
-                                    // If the group belongs to the other school that the user does not belong to, then remove the orphan groups.
-                                    $oldcohortid = $DB->get_field('tool_sms_school', 'cohortid', array('id' => $record->schoolid));
-                                    if (!cohort_is_member($oldcohortid, $userid)) {
-                                        mtrace("User {$usernsn} removed from group: {$usergroup} cohort: {$oldcohortid}", $linebreak);
-                                        groups_remove_member($usergroup, $userid);
-                                        // Log event for user changes.
-                                        $info['groupremove'] = $gidnumber;
-                                        $logrecord->info = $info;
-                                        $logrecord->userid = $userid;
-                                        self::add_sms_log($logrecord, $logsource);
-                                    }
-                                }
-                            }
-                        }
+                    mtrace("SMS user group gidnumber {$gidnumber} groupid {$smsgroupid}", $linebreak);
+                    self::remove_users_groups($school, $smsuser, $logrecord, $logsource, $linebreak, $smsgroupid, false);
+                }
+            }
+        }
+
+        mtrace("Checking missing users groups for school {$school->schoolno} ", $linebreak);
+        $sql = "select idnumber from {user} u LEFT JOIN {cohort_members} cm ON u.id = cm.userid
+                 WHERE cm.cohortid = :cohortid AND u.deleted = 0 AND u.suspended = 0
+                 AND u.auth = :authtype AND u.idnumber IS NOT NULL";
+        $params = array('cohortid' => $school->cohortid, 'authtype' => 'webservice');
+        $dbusersnsn = $DB->get_fieldset_sql($sql, $params);
+        $missingusers = array_diff($dbusersnsn, $smsusersnsn);
+       // print "<h3>smsusersnsn</h3><pre>"; print_r($smsusersnsn); print "</pre>";
+        foreach ($missingusers as $missinguser) {
+            $dbuser = $DB->get_record('user', array('idnumber' => $missinguser));
+            $dbuser->$nsn = $missinguser;
+            $dbuser->userid = $dbuser->id;
+            self::remove_users_groups($school, $dbuser, $logrecord, $logsource, $linebreak, '', true);
+        }
+    }
+
+    /**
+     * Remove a group from a user if it is removed from the external source remove
+     * Or all the groups for a user no longer available in the external source
+     *
+     * @param object $school school details
+     * @param object $user user details
+     * @param object $logrecord Log record
+     * @param string $logsource The source that executes this; cron or web
+     * @param string $linebreak line break
+     * @param string $smsgroupid User groupid according to the API.
+     * @param boolean $missingusers User no longer available in SMS feed.
+     *
+     * @return void
+     */
+    public static function remove_users_groups($school, $user, $logrecord, $logsource, $linebreak,
+            $smsgroupid = NULL, $missingusers = false) {
+        global $DB;
+        $nsn='national student number';
+        $info = array();
+        $logrecord->info = $info;
+        $courseid = get_config('tool_smsimport', 'smscourse');
+        $cohortid = $school->cohortid;
+        $userid = $user->userid;
+        mtrace("Checking groups for {$user->firstname} {$user->lastname} {$user->$nsn}", $linebreak);
+        if (self::is_teacher($userid, $courseid)) {
+            mtrace("User has teacher role, skip groups cleanup", $linebreak);
+        } else {
+            // User group according to the API.
+            // User groups in the site.
+            $usergroups = groups_get_user_groups($courseid, $userid);
+            $displayusergroups = json_encode($usergroups);
+            mtrace("Current user groups {$displayusergroups}", $linebreak);
+            $logrecord->action  = get_string('logupdate', 'tool_smsimport');
+            foreach($usergroups[0] as $usergroup) {
+                /* If the user is not in the group the API says it should be then remove the user from the group.
+                    Or if these are users no longer in the SMS school remove the groups */
+                if ((isset($smsgroupid) && $smsgroupid != $usergroup) || $missingusers == true) {
+                    // Adding an additional to exclude users transferred to another school.
+                    if (cohort_is_member($cohortid, $userid)) {
+                        groups_remove_member($usergroup, $userid);
+                        mtrace("User {$user->$nsn} removed from groupid: {$usergroup}", $linebreak);
+                        $groupidnumber = $DB->get_field('groups',  'idnumber', array('id' => $usergroup));
+                        $info['nsn'] = $user->$nsn;
+                        $info['groupremove'] = $groupidnumber;
+                        $logrecord->info = $info;
+                        $logrecord->userid = $userid;
+                        self::add_sms_log($logrecord, $logsource);
                     }
                 }
             }
