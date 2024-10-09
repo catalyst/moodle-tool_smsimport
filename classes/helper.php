@@ -582,34 +582,41 @@ class helper  {
                 $info['transferin'] = $school->schoolno;
                 $info['transferout'] = $oldschool->schoolno;
                 if (empty($oldschool)) {
+                    if (self::check_local_organisations()) {
+                        $orgschool = school::from_cohort_id($oldcohortid);
+                        $oldschool->transferout = $orgschool->get('transferout');
+                        $oldschool->cohortid =  $oldcohortid;
+                    }
                     $oldschool->schoolno = 0;
                     $info['transferout'] = $oldschool->schoolno." ({$oldcohortid})";
                 }
                 if (isset($oldschool->transferout) && $oldschool->transferout) {
+                    // Transfer user out.
                     if (cohort_is_member($oldschool->cohortid, $userid)) {
                         mtrace("Successful transfer-out user from old school", $linebreak);
                         cohort_remove_member($oldschool->cohortid, $userid);
+                        // Transfer user in.
+                        if (isset($school->transferin) && $school->transferin) {
+                            if (!cohort_is_member($cohortid, $userid) && $cohortid > 0) {
+                                mtrace("Successful transfer-in user to new school", $linebreak);
+                                mtrace("Add {$usernsn} to cohort: {$cohortid}", $linebreak);
+                                cohort_add_member($cohortid, $userid);
+                            }
+                            if (!groups_is_member($groupid, $userid)) {
+                                $info['groupadd'] = $groupid;
+                                groups_add_member($groupid, $userid);
+                                mtrace("Add {$usernsn} to group: {$groupid}", $linebreak);
+                            }
+                        } else {
+                            mtrace("Cannot transfer-in user to new school", $linebreak);
+                            $transfererror = 'lognoregister';
+                            $logrecord->error = $transfererror;
+                            $logrecord->other = $logrecord->error.'help';
+                        }
                     }
                 } else {
                     mtrace("Cannot transfer-out user from old school", $linebreak);
                     $transfererror = 'logduplicate';
-                    $logrecord->error = $transfererror;
-                    $logrecord->other = $logrecord->error.'help';
-                }
-                if (isset($school->transferin) && $school->transferin) {
-                    mtrace("Successful transfer-in user to new school", $linebreak);
-                    if (!groups_is_member($groupid, $userid)) {
-                        $info['groupadd'] = $groupid;
-                        groups_add_member($groupid, $userid);
-                        mtrace("Add {$usernsn} to group: {$groupid}", $linebreak);
-                    }
-                    if (!cohort_is_member($cohortid, $userid) && $cohortid > 0) {
-                        mtrace("Add {$usernsn} to cohort: {$cohortid}", $linebreak);
-                        cohort_add_member($cohortid, $userid);
-                    }
-                } else {
-                    mtrace("Cannot transfer-in user to new school", $linebreak);
-                    $transfererror = 'lognoregister';
                     $logrecord->error = $transfererror;
                     $logrecord->other = $logrecord->error.'help';
                 }
@@ -757,11 +764,9 @@ class helper  {
                                     user_delete_user($record);
                                 } else {
                                     $userid = $record->id;
-                                    $user = (object) array_merge((array) $record, (array) $user);
-                                    user_update_user($user, false, false);
                                     $logrecord->action  = get_string('logupdate', 'tool_smsimport');
-                                    $updateusers++;
-                                    mtrace("User with idnumber {$usernsn} updated", $linebreak);
+                                    $user = (object) array_merge((array) $record, (array) $user);
+                                    $updateuser = 1;
                                 }
                                 $counter++;
                             }
@@ -775,10 +780,17 @@ class helper  {
                         // The userid of the user who is being updated.
                         $logrecord->userid = $userid;
                         $info['userid'] = $userid;
-                        // Save user details.
-                        $profileerror = self::save_user_details($user, $smsuser, $logrecord, $logsource, $info);
                         // School transfer-in/transfer-out.
                         $transfererror = self::transfer_user_school($school, $groupid, $usernsn, $linebreak, $logrecord, $logsource, $info);
+                        if (empty($transfererror)) {
+                            if ($updateuser) {
+                                user_update_user($user, false, false);
+                                $updateusers++;
+                                mtrace("User with idnumber {$usernsn} updated", $linebreak);
+                            }
+                            // Save user details.
+                            $profileerror = self::save_user_details($user, $smsuser, $logrecord, $logsource, $info);
+                        }
                         if (!empty($transfererror) || !empty($profileerror)) {
                             $syncerror = 'logerrorsync';
                         }

@@ -74,8 +74,7 @@ $string['logsync'] = 'sync';
 $string['loggroup'] = 'group';
 $string['loguser'] = 'user';
 $string['logduplicate'] = 'Duplicate account';
-$string['logduplicatehelp'] = 'A duplicate account deducted. A student is in more than one school. Please check transferin and transferout
-settings to avoid this from happening again.';
+$string['logduplicatehelp'] = 'A duplicate user deducted in multiple schools. Please check school transferout setting.';
 $string['lognoregister'] = 'Cannot register';
 $string['lognoregisterhelp'] = 'A student is not able to register in school. Please check school transfer-in setting.';
 $string['lognodata'] = 'No data';

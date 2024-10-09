@@ -24,7 +24,7 @@
 
 use tool_smsimport\form\upload_users_form;
 use tool_smsimport\helper;
-
+use local_organisations\persistent\school;
 require_once('../../../config.php');
 require_once($CFG->libdir . '/adminlib.php');
 
@@ -70,10 +70,14 @@ if ($importform->is_cancelled()) {
     $school = helper::get_sms_school(array('cohortid' => $formdata->cohortid));
     // If it is a non SMS school then use core cohort to retrieve details.
     if (empty($school)) {
-        $record = $DB->get_record('cohort', array('id' => $formdata->cohortid));
         $school->cohortid = $formdata->cohortid;
+        if (helper::check_local_organisations()) {
+            $orgschool = school::from_cohort_id($school->cohortid);
+            $school->transferin = $orgschool->get('transferin');
+        }
         $school->schoolno = 0;
-        $school->name = $record->name;
+        $school->name = $DB->get_field('cohort', 'name',
+                array('id' => $school->cohortid));
     }
     $text = $importform->get_file_content('userfile');
     $options = array(
