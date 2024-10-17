@@ -759,6 +759,7 @@ class helper  {
                             $counter = 1;
                             // If there are more than one record found then update the latest record and delete the others.
                             foreach ($records as $record) {
+                                $updateuser = 0;
                                 if ($counter != count($records)) {
                                     $logrecord->action  = get_string('logdelete', 'tool_smsimport');
                                     user_delete_user($record);
@@ -784,6 +785,13 @@ class helper  {
                         $transfererror = self::transfer_user_school($school, $groupid, $usernsn, $linebreak, $logrecord, $logsource, $info);
                         if (empty($transfererror)) {
                             if ($updateuser) {
+                                $other = $DB->count_records_sql("SELECT count(idnumber) from {user}
+                                WHERE username LIKE :username AND idnumber NOT LIKE :idnumber",
+                                array('username' => $user->username.'%', 'idnumber' => $user->idnumber)
+                                );
+                                if ($other) {
+                                    $user->username = $user->username.rand(1, 99);
+                                }
                                 user_update_user($user, false, false);
                                 $updateusers++;
                                 mtrace("User with idnumber {$usernsn} updated", $linebreak);
