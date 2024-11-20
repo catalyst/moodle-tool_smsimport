@@ -161,6 +161,18 @@ class helper  {
     }
 
     /**
+     * Remove diacritics from string.
+     *
+     * @param string $data data
+     * @return string
+     */
+    public static function remove_accent($data) {
+        $normalized = \Normalizer::normalize($data, \Normalizer::NFD);
+        $data = preg_replace('/[\x{0300}-\x{036F}]/u', '', $normalized);
+        return $data;
+    }
+
+    /**
      * Add and Edit groups and course to school.
      *
      * @param string $schoolid School schoolno
@@ -444,7 +456,6 @@ class helper  {
         $params = array('cohortid' => $school->cohortid, 'authtype' => 'webservice');
         $dbusersnsn = $DB->get_fieldset_sql($sql, $params);
         $missingusers = array_diff($dbusersnsn, $smsusersnsn);
-       // print "<h3>smsusersnsn</h3><pre>"; print_r($smsusersnsn); print "</pre>";
         foreach ($missingusers as $missinguser) {
             $dbuser = $DB->get_record('user', array('idnumber' => $missinguser));
             $dbuser->$nsn = $missinguser;
@@ -491,7 +502,9 @@ class helper  {
                     Or if these are users no longer in the SMS school remove the groups */
                 if ((isset($smsgroupid) && $smsgroupid != $usergroup) || $missingusers == true) {
                     // Adding an additional to exclude users transferred to another school.
-                    if (cohort_is_member($cohortid, $userid)) {
+                    if (cohort_is_member($cohortid, $userid) &&
+                        $DB->record_exists('tool_sms_school_groups', ['groupid' => $usergroup])
+                    ) {
                         groups_remove_member($usergroup, $userid);
                         mtrace("User {$user->$nsn} removed from groupid: {$usergroup}", $linebreak);
                         $groupidnumber = $DB->get_field('groups',  'idnumber', array('id' => $usergroup));
@@ -667,6 +680,7 @@ class helper  {
         $total = 0;
         $newusers = 0;
         $updateusers = 0;
+        $updateuser = 0;
         $syncerror = '';
         $usersparsed = new stdClass();
         // Get SMS school config.
@@ -681,7 +695,8 @@ class helper  {
             $linebreak = "<br>";
             $orggroups = local_organisations_get_organisation_groups($cohortid, $courseid);
             foreach ($orggroups as $orggroup) {
-                $groups[$orggroup->id] = $orggroup->orggroupname;
+                $orggroupname = str_replace($school->name, '', $orggroup->orggroupname);
+                $groups[$orggroup->id] = $orggroupname;
             }
         }
         // Log record.
@@ -728,6 +743,13 @@ class helper  {
                 } else {
                     $user->suspended = 0;
                 }
+                $other = $DB->count_records_sql("SELECT count(idnumber) from {user}
+                WHERE username LIKE :username AND idnumber NOT LIKE :idnumber",
+                array('username' => $user->username.'%', 'idnumber' => $user->idnumber)
+                );
+                if ($other) {
+                    $user->username = $user->username.rand(1, 1000);
+                }
                 // Check if user is in the group to be imported
                 if ($logsource == 'cron') {
                     /*  For the API import cycle.
@@ -771,6 +793,7 @@ class helper  {
                                 }
                                 $counter++;
                             }
+                            $updateusers++;
                         } else {
                             $userid = user_create_user($user, false, false);
                             $user->id = $userid;
@@ -785,15 +808,7 @@ class helper  {
                         $transfererror = self::transfer_user_school($school, $groupid, $usernsn, $linebreak, $logrecord, $logsource, $info);
                         if (empty($transfererror)) {
                             if ($updateuser) {
-                                $other = $DB->count_records_sql("SELECT count(idnumber) from {user}
-                                WHERE username LIKE :username AND idnumber NOT LIKE :idnumber",
-                                array('username' => $user->username.'%', 'idnumber' => $user->idnumber)
-                                );
-                                if ($other) {
-                                    $user->username = $user->username.rand(1, 99);
-                                }
                                 user_update_user($user, false, false);
-                                $updateusers++;
                                 mtrace("User with idnumber {$usernsn} updated", $linebreak);
                             }
                             // Save user details.
@@ -871,7 +886,7 @@ class helper  {
         $groupname = str_replace(' ', '', $groupname);
         foreach($smsgroups as $key => $value) {
             $value = str_replace(' ', '', $value);
-            if($value == $groupname) {
+            if (helper::remove_accent($value) == helper::remove_accent($groupname)) {
                 return $key;
             }
         }
@@ -1167,7 +1182,6 @@ class helper  {
                 'CURLOPT_USERPWD' => 'ignore:me',
             ];
             $text  = $curl->get($url, NULL, $options);
-            //print "<pre>";print_r($text);print"</pre>";
             // The endpoint returns string with 'Room' in the headers.
             if(strpos($text, 'Room') !== false) {
                 $groups = $text;
@@ -1178,7 +1192,6 @@ class helper  {
                 $csvimport->init();
                 $groups = array();
                 while ($line = $csvimport->next()) {
-                    //print "<pre>";print_r($line);print"</pre>";
                     $groupidnumber = $schoolno.''.$line[0];
                     $groupname = $line[1];
                     $groups[$groupidnumber] = $groupname;
@@ -1449,8 +1462,17 @@ class helper  {
                         E.g. Room1#Y6
                         */
                         if ($label == 'profile_field_year') {
+                            $value = strtolower($value);
                             $value = explode('#', $value);
-                            $value =  end($value);
+                            foreach($value as $val) {
+                                if ((strpos($val, 'y') !== false || strpos($val, 'year') !== false)
+                                    && strpos($val, ' ') === false) {
+                                    $value =  $val;
+                                }
+                            }
+                            if (gettype($value) != 'string') {
+                                $value = '';
+                            }
                         }
                         if ($options['source'] == 'web' && $label == 'profile_field_room') {
                             // Create group if it does not exist.
