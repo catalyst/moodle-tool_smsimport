@@ -113,7 +113,7 @@ class helper  {
      *
      * @return boolean
      */
-    public static function check_local_organisations(){
+    public static function check_local_organisations() {
         $pluginman = \core_plugin_manager::instance();
         $plugins= $pluginman->get_installed_plugins('local');
         if (array_key_exists('organisations', $plugins)) {
@@ -186,6 +186,7 @@ class helper  {
         $data->timemodified = time();
         $result =  new stdClass();
         $courseid = get_config('tool_smsimport', 'smscourse');
+        $localorg = helper::check_local_organisations();
         // Log record.
         $logrecord = new stdClass();
         $logrecord->schoolno = $data->schoolno;
@@ -195,7 +196,7 @@ class helper  {
             $logaction = get_string('logcreate', 'tool_smsimport');
             $cohortid = $data->cohortid;
             $schoolname = $data->name;
-            //local_organisations school update.
+            // local_organisations school update.
             $data->organisationname = $schoolname;
             $data->organisationcode = $data->schoolno;
             $data->organisation_school_type = school::STANDARD;
@@ -203,7 +204,11 @@ class helper  {
                 // Create new school and cohort.
                 $result->message[] = "Create a new school: {$schoolname} ";
                 if ($action == 'edit') {
-                    $cohortid = local_organisations_create_organisation($data, 'tool_smsimport');
+                    if ($localorg) {
+                        $cohortid = local_organisations_create_organisation($data, 'tool_smsimport');
+                    } else {
+                        $cohortid = cohort_add_cohort($data);
+                    }
                     $data->cohortid = $cohortid;
                     $result->message[] = "Created school with cohort ".$cohortid;
                 }
@@ -224,8 +229,8 @@ class helper  {
                     $data->cohortid = 0;
                     self::unlink_sms_users($cohortid);
                 } else {
-                    // Link course to local organisation school.
-                    if(!local_organisations_store_organisation_course($cohortid, $schoolname, $courseid)) {
+                    // Link course to cohort.
+                    if(!self::save_cohort_course($cohortid, $schoolname, $courseid)) {
                         throw new \moodle_exception('coursecoutnotbelinked', 'tool_smsimport');
                     }
                 }
@@ -276,7 +281,7 @@ class helper  {
                         $logaction = get_string('logupdate', 'tool_smsimport');
                     } else {
                         // If the SMS school is linked to existing school.
-                        if ($records = local_organisations_get_organisation_groups($cohortid, $courseid)) {
+                        if ($localorg && $records = local_organisations_get_organisation_groups($cohortid, $courseid)) {
                             $ngroupname = str_replace(' ', '', $groupname);
                             // Check if the existing school's group match the SMS school group
                            $logaction = get_string('logcreate', 'tool_smsimport');
@@ -329,7 +334,9 @@ class helper  {
                         if ($action == 'edit') {
                             // Link groups to local organisation schools.
                             self::save_sms_school_groups($data->id, $groupid);
-                            local_organisations_store_organisation_group($cohortid, $groupid);
+                            if ($localorg) {
+                                local_organisations_store_organisation_group($cohortid, $groupid);
+                            }
                             $data->groupid = $groupid;
                             // Log event.
                             if ($logaction) {
@@ -344,6 +351,58 @@ class helper  {
         }
         $result->status = 1;
         return $result;
+    }
+
+    /**
+     * Store new course to cohort enrol linking table. Returns success or failure.
+     *
+     * Cannot use plugin->add_instance as it is leading to timeout due to the massive cohorts for the assessments course
+     *       $plugin = enrol_get_plugin($type);
+     *       $plugin->add_instance($course, $data);
+     * @param int $cohortid
+     * @param string $cohortname
+     * @param int $courseid
+     * @return bool
+     */
+    public static function save_cohort_course($cohortid, $cohortname, $courseid) {
+        global $DB;
+        $type = 'cohort';
+        $instance = new stdClass();
+        $record = $DB->get_records('enrol', array('courseid' => $courseid, 'enrol' => $type, 'customint1' => $cohortid), '', '*', 0, 1);
+        if ($record) {
+            foreach (reset($record) as $key => $value) {
+                $instance->$key = $value;
+            }
+        }
+        $fields = array(
+            'customint2' => -1,
+            'customint1' => $cohortid,
+            'roleid' => 5,
+            'status' => 0,
+            'courseid' => $courseid,
+            'enrol' => $type,
+            'name' => $cohortname
+        );
+        foreach($fields as $field=>$value) {
+            $instance->$field = $value;
+        }
+        if (empty($record)) {
+            $instance->status         = ENROL_INSTANCE_ENABLED;
+            $instance->enrolstartdate = 0;
+            $instance->enrolenddate   = 0;
+            $instance->timemodified   = time();
+            $instance->timecreated    = $instance->timemodified;
+            $instance->sortorder      = $DB->get_field('enrol', 'COALESCE(MAX(sortorder), -1) + 1', array('courseid'=>$courseid));
+            $instance->id = $DB->insert_record('enrol', $instance);
+            \core\event\enrol_instance_created::create_from_record($instance)->trigger();
+        } else {
+            $instance->timemodified = time();
+            $update = $DB->update_record('enrol', $instance);
+            if ($update) {
+            \core\event\enrol_instance_updated::create_from_record($instance)->trigger();
+            }
+        }
+        return true;
     }
 
 
@@ -582,6 +641,7 @@ class helper  {
         $logrecord->other = '';
         $cohortid = $info['cohortid'];
         $userid = $info['userid'];
+        $localorg = helper::check_local_organisations();
         // If student exists in other schools then deal with transfer-in/transfer-out
         $otherrecords = $DB->get_records_select('cohort_members', 'cohortid != :cohortid AND userid = :userid',
         ['cohortid' => $cohortid, 'userid' => $userid], '',  '*');
@@ -595,7 +655,7 @@ class helper  {
                 $info['transferin'] = $school->schoolno;
                 $info['transferout'] = $oldschool->schoolno;
                 if (empty($oldschool)) {
-                    if (self::check_local_organisations()) {
+                    if ($localorg) {
                         $orgschool = school::from_cohort_id($oldcohortid);
                         $oldschool->transferout = $orgschool->get('transferout');
                         $oldschool->cohortid =  $oldcohortid;
@@ -683,6 +743,7 @@ class helper  {
         $updateuser = 0;
         $syncerror = '';
         $usersparsed = new stdClass();
+        $localorg = helper::check_local_organisations();
         // Get SMS school config.
         $cohortid = $school->cohortid;
         if ($logsource == 'cron') {
@@ -691,12 +752,14 @@ class helper  {
             $linebreak = "\n";
             $groups = helper::get_sms_school_groups($school->id, 'schoolid');
         } else {
-            $authtype = 'nologin';
-            $linebreak = "<br>";
-            $orggroups = local_organisations_get_organisation_groups($cohortid, $courseid);
-            foreach ($orggroups as $orggroup) {
-                $orggroupname = str_replace($school->name, '', $orggroup->orggroupname);
-                $groups[$orggroup->id] = $orggroupname;
+            if ($localorg) {
+                $authtype = 'nologin';
+                $linebreak = "<br>";
+                $orggroups = local_organisations_get_organisation_groups($cohortid, $courseid);
+                foreach ($orggroups as $orggroup) {
+                    $orggroupname = str_replace($school->name, '', $orggroup->orggroupname);
+                    $groups[$orggroup->id] = $orggroupname;
+                }
             }
         }
         // Log record.
@@ -902,6 +965,7 @@ class helper  {
      * @return string translated data value
      */
     public static function sms_data_mapping($name, $value) {
+        $localorg = helper::check_local_organisations();
         $finalvalue = '';
         $error = '';
         $customfield = profile_get_custom_field_data_by_shortname($name);
@@ -912,26 +976,27 @@ class helper  {
         switch ($name) {
             // Format e.g. : Australian
             case "ethnicity":
-                if (empty($value)) {
-                    $finalvalue = 'Unknown';
-                } else {
-                    $sitevalue = explode("\n", $customfield->param1);
-                    $multiet = explode(",", $value);
-                    /* If there are multiple ethnicities, take the first one and ignore the rest.
-                       as this profile field currently only supports taking a single value.
-                       */
-                    $value = $multiet[0];
-                    if (!$finalvalue = local_organisations_convert_ethnicity_to_category($value)) {
-                        $et = explode("/", $value);
-                        foreach($et as $ethnicity) {
-                            if (!$finalvalue = local_organisations_convert_ethnicity_to_category($ethnicity)) {
-                                $finalvalue = 'Unknown';
-                                $error = 1;
+                if ($localorg) {
+                    if (empty($value)) {
+                        $finalvalue = 'Unknown';
+                    } else {
+                        $sitevalue = explode("\n", $customfield->param1);
+                        $multiet = explode(",", $value);
+                        /* If there are multiple ethnicities, take the first one and ignore the rest.
+                           as this profile field currently only supports taking a single value.
+                           */
+                        $value = $multiet[0];
+                        if (!$finalvalue = local_organisations_convert_ethnicity_to_category($value)) {
+                            $et = explode("/", $value);
+                            foreach($et as $ethnicity) {
+                                if (!$finalvalue = local_organisations_convert_ethnicity_to_category($ethnicity)) {
+                                    $finalvalue = 'Unknown';
+                                    $error = 1;
+                                }
                             }
                         }
                     }
                 }
-
             break;
 
             case "gender":
