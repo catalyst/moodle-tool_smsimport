@@ -108,7 +108,7 @@ class edit_school_form extends moodleform {
     public function validation($data, $files) {
         global $DB;
         $errors = parent::validation($data, $files);
-        $sql = 'select name from {tool_sms_school} WHERE id != :schoolid AND cohortid != 0 AND cohortid = :cohortid';
+        $sql = 'select name from {tool_smsimport_school} WHERE id != :schoolid AND cohortid != 0 AND cohortid = :cohortid';
         $params = ['schoolid' => $data['id'], 'cohortid' => $data['cohortid']];
         $record = $DB->get_record_sql($sql, $params);
         if (!empty($record)) {

@@ -44,7 +44,7 @@ class provider implements \core_privacy\local\metadata\provider,
      */
     public static function get_metadata(collection $collection): collection {
 
-        $collection->add_database_table('tool_sms_school_log', [
+        $collection->add_database_table('tool_smsimport_school_log', [
             'schoolno' => 'privacy:metadata:schoolno',
             'target' => 'privacy:metadata:target',
             'action' => 'privacy:metadata:action',

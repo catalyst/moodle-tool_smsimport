@@ -4,7 +4,7 @@
     xsi:noNamespaceSchemaLocation="../../../../lib/xmldb/xmldb.xsd"
 >
   <TABLES>
-    <TABLE NAME="tool_sms" COMMENT="Table to store SMS configurations">
+    <TABLE NAME="tool_smsimport" COMMENT="Table to store SMS configurations">
       <FIELDS>
         <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
         <FIELD NAME="key" TYPE="char" LENGTH="100" NOTNULL="true" SEQUENCE="false" COMMENT="SMS ID"/>
@@ -20,7 +20,7 @@
         <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
       </KEYS>
     </TABLE>
-    <TABLE NAME="tool_sms_school" COMMENT="Table to store school">
+    <TABLE NAME="tool_smsimport_school" COMMENT="Table to store school">
       <FIELDS>
         <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
         <FIELD NAME="smsid" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false"/>
@@ -36,10 +36,10 @@
       </FIELDS>
       <KEYS>
         <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
-        <KEY NAME="smsid" TYPE="foreign" FIELDS="smsid" REFTABLE="tool_sms" REFFIELDS="id"/>
+        <KEY NAME="smsid" TYPE="foreign" FIELDS="smsid" REFTABLE="tool_smsimport" REFFIELDS="id"/>
       </KEYS>
     </TABLE>
-    <TABLE NAME="tool_sms_school_groups" COMMENT="Link a school to a group.">
+    <TABLE NAME="tool_smsimport_school_groups" COMMENT="Link a school to a group.">
       <FIELDS>
         <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
         <FIELD NAME="schoolid" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false"/>
@@ -47,14 +47,14 @@
       </FIELDS>
       <KEYS>
         <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
-        <KEY NAME="schoolid" TYPE="foreign" FIELDS="schoolid" REFTABLE="tool_sms_school" REFFIELDS="id"/>
+        <KEY NAME="schoolid" TYPE="foreign" FIELDS="schoolid" REFTABLE="tool_smsimport_school" REFFIELDS="id"/>
         <KEY NAME="groupid" TYPE="foreign" FIELDS="groupid" REFTABLE="groups" REFFIELDS="id"/>
       </KEYS>
       <INDEXES>
         <INDEX NAME="schoolid-groupid" UNIQUE="true" FIELDS="schoolid, groupid" COMMENT="Unique key"/>
       </INDEXES>
     </TABLE>
-    <TABLE NAME="tool_sms_school_log" COMMENT="SMS school log table">
+    <TABLE NAME="tool_smsimport_school_log" COMMENT="SMS school log table">
       <FIELDS>
         <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
         <FIELD NAME="schoolno" TYPE="char" LENGTH="10" NOTNULL="true" SEQUENCE="false" COMMENT="School ID from the SMS"/>
@@ -70,7 +70,7 @@
       </FIELDS>
       <KEYS>
         <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
-        <KEY NAME="schoolno" TYPE="foreign" FIELDS="schoolno" REFTABLE="tool_sms_school" REFFIELDS="schoolno"/>
+        <KEY NAME="schoolno" TYPE="foreign" FIELDS="schoolno" REFTABLE="tool_smsimport_school" REFFIELDS="schoolno"/>
         <KEY NAME="userid" TYPE="foreign" FIELDS="userid" REFTABLE="user" REFFIELDS="id"/>
       </KEYS>
       <INDEXES>

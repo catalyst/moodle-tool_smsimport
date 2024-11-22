@@ -50,7 +50,7 @@ class add_school_form extends moodleform {
         $action = $this->_customdata['action'];
 
         global $DB;
-        $rows = $DB->get_records('tool_sms');
+        $rows = $DB->get_records('tool_smsimport');
         $options = [];
         foreach ($rows as $row) {
             $options[$row->id] = ucwords($row->name);

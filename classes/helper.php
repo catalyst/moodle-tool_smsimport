@@ -61,7 +61,7 @@ class helper {
      */
     public static function get_sms($value, $key) {
         global $DB;
-        $record = $DB->get_record('tool_sms', [$key => $value]);
+        $record = $DB->get_record('tool_smsimport', [$key => $value]);
         return $record;
     }
 
@@ -73,7 +73,7 @@ class helper {
      */
     public static function get_sms_school($params) {
         global $DB;
-        $record = $DB->get_record('tool_sms_school', $params);
+        $record = $DB->get_record('tool_smsimport_school', $params);
         return $record;
     }
 
@@ -87,7 +87,7 @@ class helper {
     public static function get_sms_school_groups($value, $key) {
         global $DB;
         $groups = [];
-        $sql = "select groupid, idnumber, g.name from {tool_sms_school_groups} sg JOIN {groups} g on sg.groupid = g.id
+        $sql = "select groupid, idnumber, g.name from {tool_smsimport_school_groups} sg JOIN {groups} g on sg.groupid = g.id
         WHERE {$key} = :value";
         $params = ['value' => $value];
         if ($linkedgroups = $DB->get_records_sql($sql, $params)) {
@@ -110,7 +110,7 @@ class helper {
      */
     public static function get_sms_schools($params) {
         global $DB;
-        $record = $DB->get_records('tool_sms_school', $params);
+        $record = $DB->get_records('tool_smsimport_school', $params);
         return $record;
     }
 
@@ -148,7 +148,7 @@ class helper {
             $data->suspend = 0;
         }
         $data->name = trim($data->name);
-        if (!($result = $DB->update_record('tool_sms_school', $data, false))) {
+        if (!($result = $DB->update_record('tool_smsimport_school', $data, false))) {
             throw new \moodle_exception('errorschoolnoteditted', 'tool_smsimport');
         }
         return $result;
@@ -429,9 +429,9 @@ class helper {
     public static function save_sms_school_groups($schoolid, $groupid) {
         global $DB;
         $params = ['schoolid' => $schoolid, 'groupid' => $groupid];
-        $id = $DB->get_field('tool_sms_school_groups', 'id', $params);
+        $id = $DB->get_field('tool_smsimport_school_groups', 'id', $params);
         if (!$id) {
-            $DB->insert_record('tool_sms_school_groups',  $params);
+            $DB->insert_record('tool_smsimport_school_groups',  $params);
         }
     }
 
@@ -450,9 +450,9 @@ class helper {
         groups_update_group($groupdata);
         // Delete group from sms groups.
         $params = ['schoolid' => $schoolid, 'groupid' => $groupid];
-        $id = $DB->get_field('tool_sms_school_groups', 'id', $params);
+        $id = $DB->get_field('tool_smsimport_school_groups', 'id', $params);
         if ($id) {
-            $DB->delete_records('tool_sms_school_groups', ['id' => $id]);
+            $DB->delete_records('tool_smsimport_school_groups', ['id' => $id]);
         }
     }
 
@@ -575,7 +575,7 @@ class helper {
                 if ((isset($smsgroupid) && $smsgroupid != $usergroup) || $missingusers == true) {
                     // Adding an additional to exclude users transferred to another school.
                     if (cohort_is_member($cohortid, $userid) &&
-                        $DB->record_exists('tool_sms_school_groups', ['groupid' => $usergroup])
+                        $DB->record_exists('tool_smsimport_school_groups', ['groupid' => $usergroup])
                     ) {
                         groups_remove_member($usergroup, $userid);
                         mtrace("User {$user->$nsn} removed from groupid: {$usergroup}", $linebreak);
@@ -1190,7 +1190,7 @@ class helper {
         $response = new stdClass();
         // Get SMS API details.
         $param = ['id' => $school->smsid];
-        $record = $DB->get_record('tool_sms', $param);
+        $record = $DB->get_record('tool_smsimport', $param);
         $getusers = $record->url2;
         $getgroups = $record->url3;
         $curl = new \curl();
@@ -1305,7 +1305,7 @@ class helper {
         if (isset($data->info)) {
             $data->info = json_encode($data->info);
         }
-        $result = $DB->insert_record('tool_sms_school_log', $data);
+        $result = $DB->insert_record('tool_smsimport_school_log', $data);
 
         if ($email && !empty($data->error)) {
             $error = self::extract_strings($data->error);
@@ -1483,8 +1483,12 @@ class helper {
             }
             // Prepare the data to import users.
             $users = [];
+            $user = new stdClass();
             $counter = 0;
             while ($line = $csvimport->next()) {
+                if (!isset($user)) {
+                    $user = new stdClass();
+                }
                 $user = new stdClass();
                 foreach ($line as $key => $value) {
                     if ((isset($required[$header[$key]]) || isset($optional[$header[$key]]))) {
@@ -1539,8 +1543,11 @@ class helper {
 
         if ($options['format'] == 'json') {
             $users = [];
+            $user = new stdClass();
             foreach ($data as $count => $record) {
-                $user = new stdClass();
+                if (!isset($user)) {
+                    $user = new stdClass();
+                }
                 foreach ($record as $h => $value) {
                     $h = self::fix_labels($h);
                     $user->$h = $value;
@@ -1635,7 +1642,7 @@ class helper {
         $response = self::get_sms_token($data);
         $data->name = trim($data->name);
         if (empty($response->error)) {
-            return $DB->insert_record('tool_sms_school', $data, true, false);
+            return $DB->insert_record('tool_smsimport_school', $data, true, false);
         } else {
             throw new \moodle_exception('errorschoolnotfound', 'tool_smsimport');
         }
@@ -1661,13 +1668,13 @@ class helper {
                 $user = $DB->get_record('user', ['id' => $userid]);
                 user_delete_user($user);
             }
-            $groups = $DB->get_records('tool_sms_school_groups', ['schoolid' => $id]);
+            $groups = $DB->get_records('tool_smsimport_school_groups', ['schoolid' => $id]);
             foreach ($groups as $group) {
                 groups_delete_group($group->groupid);
             }
-            $DB->delete_records('tool_sms_school_log', ['schoolno' => $smsschool->schoolno]);
-            $DB->delete_records('tool_sms_school_groups', ['schoolid' => $id]);
-            $DB->delete_records('tool_sms_school', ['id' => $id]);
+            $DB->delete_records('tool_smsimport_school_log', ['schoolno' => $smsschool->schoolno]);
+            $DB->delete_records('tool_smsimport_school_groups', ['schoolid' => $id]);
+            $DB->delete_records('tool_smsimport_school', ['id' => $id]);
             $result = true;
         } catch (\Exception $e) {
             throw new \moodle_exception('errorschoolnotdeleted', 'tool_smsimport', $e);

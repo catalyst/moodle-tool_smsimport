@@ -82,7 +82,7 @@ $table->colclasses = [
 ];
 $table->data = [];
 
-$records = $DB->get_records('tool_sms_school', null, 'name');
+$records = $DB->get_records('tool_smsimport_school', null, 'name');
 foreach ($records as $record) {
     $urldelete->params(['id' => $record->id]);
     $urledit->params(['id' => $record->id]);

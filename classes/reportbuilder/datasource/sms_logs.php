@@ -55,7 +55,7 @@ class sms_logs extends datasource {
         $smslogentity = new sms_log();
 
         $smslogalias = $smslogentity->get_table_alias('sms_log');
-        $this->set_main_table('tool_sms_school_log', $smslogalias);
+        $this->set_main_table('tool_smsimport_school_log', $smslogalias);
 
         $this->add_entity($smslogentity);
 
