@@ -65,11 +65,11 @@ $importform = new upload_users_form(null);
 if ($importform->is_cancelled()) {
     redirect($returnurl);
 } else if ($formdata = $importform->get_data()) {
-    $school = new stdClass();
     // Get school details.
-    $school = helper::get_sms_school(array('cohortid' => $formdata->cohortid));
+    $school = helper::get_sms_school(['cohortid' => $formdata->cohortid]);
     // If it is a non SMS school then use core cohort to retrieve details.
     if (empty($school)) {
+        $school = new stdClass();
         $school->cohortid = $formdata->cohortid;
         if (helper::check_local_organisations()) {
             $orgschool = school::from_cohort_id($school->cohortid);
@@ -77,20 +77,20 @@ if ($importform->is_cancelled()) {
         }
         $school->schoolno = 0;
         $school->name = $DB->get_field('cohort', 'name',
-                array('id' => $school->cohortid));
+                ['id' => $school->cohortid]);
     }
     $text = $importform->get_file_content('userfile');
-    $options = array(
+    $options = [
         'format' => 'text',
         'delimiter' => $formdata->delimiter_name,
         'encoding' => $formdata->encoding,
-        'source' => 'web'
-    );
+        'source' => 'web',
+    ];
     $records = helper::parse_data($text, $options, $school);
-    $result = helper::import_school_users($school, 'web', $records);
+    $result = helper::import_school_users($school, $records, 'web');
     if ($result) {
         echo html_writer::start_tag('p');
-        echo html_writer::link($returnurl , get_string("continue"), array('class' => 'btn btn-primary'));
+        echo html_writer::link($returnurl , get_string("continue"), ['class' => 'btn btn-primary']);
         echo html_writer::end_tag('p');
     }
     echo $OUTPUT->footer();

@@ -33,7 +33,7 @@ $tasks = [
         'hour' => 0,
         'day' => '*',
         'dayofweek' => '*',
-        'month' => '*'
+        'month' => '*',
     ],
     [
         'classname' => 'tool_smsimport\task\cleanup_sms_users',
@@ -42,6 +42,6 @@ $tasks = [
         'hour' => 0,
         'day' => '*',
         'dayofweek' => '*',
-        'month' => '*'
+        'month' => '*',
     ],
 ];

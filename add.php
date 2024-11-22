@@ -53,10 +53,11 @@ $school->id = null;
 if ($id) {
     $urlparams['id'] = $id;
     $urlparams['sesskey'] = sesskey();
+    $localorg = helper::check_local_organisations();
     // Load school if exists.
-    if (!$school = helper::get_sms_school(array('id' => $id))) {
+    if (!$school = helper::get_sms_school(['id' => $id])) {
         throw new \moodle_exception('wrongschoolid', 'tool_smsimport');
-    } else if(helper::check_local_organisations()) {
+    } else if ($localorg) {
         if ($school->cohortid) {
             $school->groups = helper::get_sms_school_groups($school->id, 'schoolid');
         }
@@ -64,7 +65,7 @@ if ($id) {
 }
 
 $pageurl = '/admin/tool/smsimport/add.php';
-$PAGE->set_url($pageurl, array('action' => $action, 'id' => $id, 'confirm' => $confirm));
+$PAGE->set_url($pageurl, ['action' => $action, 'id' => $id, 'confirm' => $confirm]);
 
 $PAGE->navbar->add(get_string('pluginname', 'tool_smsimport'), $returnurl);
 $PAGE->navbar->add(get_string('addschool', 'tool_smsimport'));
@@ -94,7 +95,7 @@ if ($action === 'delete') {
 }
 
 // Setup the form.
-$mform = new add_school_form(null, compact('school','action'));
+$mform = new add_school_form(null, compact('school', 'action'));
 $school->action = $action;
 $mform->set_data($school);
 
@@ -102,21 +103,21 @@ $mform->set_data($school);
 if ($mform->is_cancelled()) {
     redirect($returnurl);
 } else if ($data = $mform->get_data()) {
-            if ($action == 'add') {
-                // Add school.
-                if (empty($id = helper::add_sms_school($data))) {
-                    throw new \moodle_exception('errorschoolnotadded', 'tool_smsimport');
-                }
-                // Redirect to add school groups.
-                $urlparams['id'] = $id;
-                $urlparams['action'] = 'select';
-                $urlselect = new moodle_url(new moodle_url('/admin/tool/smsimport/edit.php'), $urlparams);
-                redirect($urlselect);
-            } else if ($action == 'edit'){
-                // Edit school.
-                helper::save_sms_school($data);
-                redirect($returnurl);
-            }
+    if ($action == 'add') {
+        // Add school.
+        if (empty($id = helper::add_sms_school($data))) {
+            throw new \moodle_exception('errorschoolnotadded', 'tool_smsimport');
+        }
+        // Redirect to add school groups.
+        $urlparams['id'] = $id;
+        $urlparams['action'] = 'select';
+        $urlselect = new moodle_url(new moodle_url('/admin/tool/smsimport/edit.php'), $urlparams);
+        redirect($urlselect);
+    } else if ($action == 'edit') {
+        // Edit school.
+        helper::save_sms_school($data);
+        redirect($returnurl);
+    }
 }
 echo $OUTPUT->header();
 echo $OUTPUT->heading(get_string('addschool', 'tool_smsimport'));

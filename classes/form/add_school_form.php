@@ -31,6 +31,13 @@ defined('MOODLE_INTERNAL') || die();
 
 require_once("$CFG->libdir/formslib.php");
 
+/**
+ * Add school form tool_smsimport plugin.
+ *
+ * @package   tool_smsimport
+ * @copyright 2024, Sumaiya Javed <sumaiya.javed@catalyst.net.nz>
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ */
 class add_school_form extends moodleform {
 
     /**
@@ -44,7 +51,7 @@ class add_school_form extends moodleform {
 
         global $DB;
         $rows = $DB->get_records('tool_sms');
-        $options = array();
+        $options = [];
         foreach ($rows as $row) {
             $options[$row->id] = ucwords($row->name);
         }
@@ -86,18 +93,15 @@ class add_school_form extends moodleform {
      * @param array $files unused
      * @return array|bool
      */
-    function validation($data, $files) {
+    public function validation($data, $files) {
         $errors = parent::validation($data, $files);
-        if ($data['action'] == 'add' && !empty($school = helper::get_sms_school(array('schoolno' => $data['schoolno'])))) {
-            $a = array('url' => 'admin/tool/smsimport/add.php?action=edit&id='.$school->id);
+        if ($data['action'] == 'add' && !empty($school = helper::get_sms_school(['schoolno' => $data['schoolno']]))) {
+            $a = ['url' => 'admin/tool/smsimport/add.php?action=edit&id='.$school->id];
             $errors['schoolno']  = get_string('errorschoolexists', 'tool_smsimport', $a);
         }
         if ($errors) {
-        return $errors;
+            return $errors;
         }
         return true;
     }
-
-
-
 }

@@ -31,6 +31,13 @@ defined('MOODLE_INTERNAL') || die();
 
 require_once("$CFG->libdir/formslib.php");
 
+/**
+ * Edit school form tool_smsimport plugin.
+ *
+ * @package   tool_smsimport
+ * @copyright 2024, Sumaiya Javed <sumaiya.javed@catalyst.net.nz>
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ */
 class edit_school_form extends moodleform {
 
     /**
@@ -49,7 +56,7 @@ class edit_school_form extends moodleform {
         $select = $mform->addElement('autocomplete', 'groupsselect', get_string('groups', 'tool_smsimport'), $smsgroups);
         $select->setMultiple(true);
         if (!empty($school->groups)) {
-            foreach($school->groups as $key => $value) {
+            foreach ($school->groups as $key => $value) {
                 $selected[] = $key;
             }
             $select->setSelected($selected);
@@ -57,14 +64,14 @@ class edit_school_form extends moodleform {
         if (helper::check_local_organisations()) {
             // Get system level cohorts.
             global $DB;
-            $records = $DB->get_records('cohort', array('visible' => 1, 'contextid' => 1), 'name');
+            $records = $DB->get_records('cohort', ['visible' => 1, 'contextid' => 1], 'name');
             $cohorts[0] = 'None';
             foreach ($records as $record) {
                 $cohorts[$record->id] = $record->name;
             }
             $select = $mform->addElement('select', 'cohortid', get_string('cohortid', 'tool_smsimport'), $cohorts);
             if (!empty($school->cohortid)) {
-                $mform->updateElementAttr('cohortid', array('disabled' => 'disabled'));
+                $mform->updateElementAttr('cohortid', ['disabled' => 'disabled']);
                 $mform->addElement('checkbox', 'unlink', get_string('unlink', 'tool_smsimport'));
                 $mform->addHelpButton('unlink', 'unlink', 'tool_smsimport');
             }
@@ -98,14 +105,14 @@ class edit_school_form extends moodleform {
      * @param array $files unused
      * @return array|bool
      */
-    function validation($data, $files) {
+    public function validation($data, $files) {
         global $DB;
         $errors = parent::validation($data, $files);
         $sql = 'select name from {tool_sms_school} WHERE id != :schoolid AND cohortid != 0 AND cohortid = :cohortid';
-        $params = array('schoolid' => $data['id'], 'cohortid' => $data['cohortid']);
+        $params = ['schoolid' => $data['id'], 'cohortid' => $data['cohortid']];
         $record = $DB->get_record_sql($sql, $params);
         if (!empty($record)) {
-            $a = array('name' => $record->name);
+            $a = ['name' => $record->name];
             $errors['cohortid']  = get_string('errorschoollinked', 'tool_smsimport', $a);
         }
         if ($errors) {
@@ -113,5 +120,4 @@ class edit_school_form extends moodleform {
         }
         return true;
     }
-
 }

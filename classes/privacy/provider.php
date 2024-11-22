@@ -26,8 +26,6 @@ namespace tool_smsimport\privacy;
 
 use core_privacy\local\metadata\collection;
 
-defined('MOODLE_INTERNAL') || die();
-
 /**
  * Class provider
  *
@@ -38,6 +36,12 @@ defined('MOODLE_INTERNAL') || die();
 class provider implements \core_privacy\local\metadata\provider,
     \core_privacy\local\request\data_provider {
 
+    /**
+     * Return the fields which contain personal data.
+     *
+     * @param collection $collection a reference to the collection to use to store the metadata.
+     * @return collection the updated collection of metadata items.
+     */
     public static function get_metadata(collection $collection): collection {
 
         $collection->add_database_table('tool_sms_school_log', [
@@ -50,8 +54,9 @@ class provider implements \core_privacy\local\metadata\provider,
             'timecreated' => 'privacy:metadata:timecreated',
             'userid' => 'privacy:metadata:userid',
             'origin' => 'privacy:metadata:origin',
-            'ip' => 'privacy:metadata:ip'
+            'ip' => 'privacy:metadata:ip',
         ], 'privacy:metadata:tool_sms_school_log');
+
         return $collection;
     }
 }

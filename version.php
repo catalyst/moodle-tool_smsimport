@@ -27,4 +27,4 @@ defined('MOODLE_INTERNAL') || die();
 $plugin->version = 2024061304;
 $plugin->requires = 2022111800;
 $plugin->maturity = MATURITY_STABLE;
-$plugin->component = 'tool_smsimport'; // Full name of the plugin (used for diagnostics)
+$plugin->component = 'tool_smsimport';

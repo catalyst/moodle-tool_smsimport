@@ -52,13 +52,13 @@ $school->id = null;
 if ($id) {
     $urlparams['id'] = $id;
     $urlparams['sesskey'] = sesskey();
-    if (!$school = helper::get_sms_school(array('id' => $id))) {
+    if (!$school = helper::get_sms_school(['id' => $id])) {
         throw new \moodle_exception('wrongschoolid', 'tool_smsimport');
     }
 }
 
 $pageurl = '/admin/tool/smsimport/edit.php';
-$PAGE->set_url($pageurl, array('action' => $action,'id' => $id));
+$PAGE->set_url($pageurl, ['action' => $action, 'id' => $id]);
 
 $PAGE->navbar->add(get_string('pluginname', 'tool_smsimport'), $returnurl);
 $PAGE->navbar->add(get_string('editschool', 'tool_smsimport'));
@@ -79,12 +79,12 @@ if ($school->cohortid) {
 }
 
 if ($action == 'select') {
-    $selectform = new edit_school_form(null, compact('school','action'));
+    $selectform = new edit_school_form(null, compact('school', 'action'));
     $selectform->set_data($school);
     if ($selectform->is_cancelled()) {
         redirect($returnurl);
     } else if ($selectformdata = $selectform->get_data()) {
-        $groups = isset($school->groups) ? $school->groups : NULL;
+        $groups = isset($school->groups) ? $school->groups : null;
         $result = helper::save_sms_school_details($selectformdata, $action, $groups);
         $school->cohortid = $selectformdata->cohortid;
         $school->groupsselect = $selectformdata->groupsselect;
@@ -99,7 +99,7 @@ if ($action == 'select') {
         $school->message = $message;
         $editformset = true;
         $action = 'edit';
-        $editform = new save_school_form(null, compact('school','action'));
+        $editform = new save_school_form(null, compact('school', 'action'));
         $editform->set_data($school);
         echo $OUTPUT->box_start();
         $editform->display();
@@ -112,15 +112,15 @@ if ($action == 'select') {
 }
 
 if ($action == 'edit') {
-    $saveform = new save_school_form(null, compact('school','action'));
+    $saveform = new save_school_form(null, compact('school', 'action'));
     if ($saveform->is_cancelled()) {
         redirect($returnurl);
     } else if ($saveformdata = $saveform->get_data()) {
-        $school = helper::get_sms_school(array('id' => $saveformdata->id));
+        $school = helper::get_sms_school(['id' => $saveformdata->id]);
         $school->cohortid = $saveformdata->cohortid;
         $school->unlink = $saveformdata->unlink;
         $school->groupsselect = explode('-', $saveformdata->groupssave);
-        $groups= helper::get_sms_school_groups($school->id, 'schoolid');
+        $groups = helper::get_sms_school_groups($school->id, 'schoolid');
         $result = helper::save_sms_school_details($school, $action, $groups);
 
         if ($result) {

@@ -55,7 +55,7 @@ echo $OUTPUT->header();
 echo $OUTPUT->heading(get_string('schools', 'tool_smsimport'));
 
 // Links.
-$urlparams = array();
+$urlparams = [];
 $urlparams['sesskey'] = sesskey();
 // Add new school.
 $urlparams['action'] = 'add';
@@ -72,21 +72,21 @@ $urlparams['confirm'] = 1;
 $urldelete = new moodle_url('add.php', $urlparams);
 
 $table = new \html_table();
-$table->head = array(
+$table->head = [
     get_string('schoolname', 'tool_smsimport'),
     get_string('actions', 'tool_smsimport'),
-);
-$table->colclasses = array(
+];
+$table->colclasses = [
     'schoolname',
     'actions',
-);
-$table->data = array();
+];
+$table->data = [];
 
-$records = $DB->get_records('tool_sms_school', NULL, 'name');
+$records = $DB->get_records('tool_sms_school', null, 'name');
 foreach ($records as $record) {
-    $urldelete->params(array('id' => $record->id));
-    $urledit->params(array('id' => $record->id));
-    $urlgroup->params(array('id' => $record->id));
+    $urldelete->params(['id' => $record->id]);
+    $urledit->params(['id' => $record->id]);
+    $urlgroup->params(['id' => $record->id]);
     $school = new \html_table_cell($record->schoolno ." ". $record->name);
     $edit = \html_writer::link($urledit, get_string('edit'),  [
         'class' => 'btn btn-primary',
@@ -100,11 +100,11 @@ foreach ($records as $record) {
         'data-confirmation-title-str' => json_encode(['delete', 'core']),
         'data-confirmation-content-str' => json_encode(['areyousure']),
         'data-confirmation-yes-button-str' => json_encode(['delete', 'core']),
-        'data-confirmation-destination' => $urldelete
+        'data-confirmation-destination' => $urldelete,
     ]);
 
     $buttons = new \html_table_cell($edit. " ". $group . " ". $delete);
-    $row = new \html_table_row(array($school, $buttons));
+    $row = new \html_table_row([$school, $buttons]);
     $table->data[] = $row;
 }
 

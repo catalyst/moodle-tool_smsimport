@@ -23,8 +23,6 @@
  */
 
 namespace tool_smsimport\form;
-
-use tool_smsimport\helper;
 use moodleform;
 
 defined('MOODLE_INTERNAL') || die();
@@ -32,6 +30,13 @@ defined('MOODLE_INTERNAL') || die();
 require_once("$CFG->libdir/formslib.php");
 require_once($CFG->libdir . '/csvlib.class.php');
 
+/**
+ * Upload users via csv form tool_smsimport plugin.
+ *
+ * @package   tool_smsimport
+ * @copyright  2024, Sumaiya Javed <sumaiya.javed@catalyst.net.nz>
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ */
 class upload_users_form extends moodleform {
 
     /**
@@ -47,7 +52,7 @@ class upload_users_form extends moodleform {
 
         // Get system level cohorts.
         global $DB;
-        $records = $DB->get_records('cohort', array('visible' => 1, 'contextid' => 1), 'name');
+        $records = $DB->get_records('cohort', ['visible' => 1, 'contextid' => 1], 'name');
         $cohorts[0] = 'None';
         foreach ($records as $record) {
             $cohorts[$record->id] = $record->name;
@@ -55,7 +60,8 @@ class upload_users_form extends moodleform {
         $mform->addElement('select', 'cohortid', get_string('cohortid', 'tool_smsimport'), $cohorts);
         $mform->addRule('cohortid', null, 'required');
 
-        $mform->addElement('static', 'examplecsv', get_string('examplecsv', 'tool_uploaduser'), $link."<br>".get_string('examplecsv', 'tool_smsimport'));
+        $mform->addElement('static', 'examplecsv', get_string('examplecsv', 'tool_uploaduser'),
+            $link."<br>".get_string('examplecsv', 'tool_smsimport'));
         $mform->addHelpButton('examplecsv', 'examplecsv', 'tool_uploaduser');
 
         $mform->addElement('filepicker', 'userfile', get_string('file'));
@@ -75,7 +81,7 @@ class upload_users_form extends moodleform {
         $mform->addElement('select', 'encoding', get_string('encoding', 'tool_uploaduser'), $choices);
         $mform->setDefault('encoding', 'UTF-8');
 
-        $choices = array('10'=>10, '20'=>20, '100'=>100, '1000'=>1000, '100000'=>100000);
+        $choices = ['10' => 10, '20' => 20, '100' => 100, '1000' => 1000, '100000' => 100000];
         $mform->addElement('select', 'previewrows', get_string('rowpreviewnum', 'tool_uploaduser'), $choices);
         $mform->setType('previewrows', PARAM_INT);
 
@@ -88,16 +94,14 @@ class upload_users_form extends moodleform {
 
     }
 
-
     /**
      * Validate the school form data.
      * @param array $data Data to be validated
      * @param array $files unused
      * @return array|bool
      */
-    function validation($data, $files) {
+    public function validation($data, $files) {
         $errors = parent::validation($data, $files);
         return $errors;
     }
-
 }

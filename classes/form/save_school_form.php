@@ -30,6 +30,13 @@ defined('MOODLE_INTERNAL') || die();
 
 require_once("$CFG->libdir/formslib.php");
 
+/**
+ * Save school form tool_smsimport plugin.
+ *
+ * @package   tool_smsimport
+ * @copyright 2024, Sumaiya Javed <sumaiya.javed@catalyst.net.nz>
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ */
 class save_school_form extends moodleform {
 
     /**
@@ -41,7 +48,7 @@ class save_school_form extends moodleform {
         $school = $this->_customdata['school'];
         $action = $this->_customdata['action'];
 
-        if(!empty($school->message)) {
+        if (!empty($school->message)) {
             $message = implode('<br>', $school->message);
             $mform->addElement('html', '<h5>'.get_string('changesmake', 'tool_smsimport').'</h5>
             <div class="alert alert-warning">'.$message.'</div>');
@@ -72,7 +79,7 @@ class save_school_form extends moodleform {
         $mform->setType('cohortid', PARAM_INT);
         $mform->setDefault('cohortid', $school->cohortid);
 
-        if(!empty($school->message)) {
+        if (!empty($school->message)) {
             $this->add_action_buttons(true, 'Continue');
         }
     }
@@ -83,7 +90,7 @@ class save_school_form extends moodleform {
      * @param array $files unused
      * @return array|bool
      */
-    function validation($data, $files) {
+    public function validation($data, $files) {
         $errors = parent::validation($data, $files);
         return $errors;
     }
