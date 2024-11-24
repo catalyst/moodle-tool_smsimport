@@ -27,6 +27,6 @@ defined('MOODLE_INTERNAL') || die();
 $plugin->version = 2024110000;
 $plugin->release = 2024061304;
 $plugin->requires = 2022111800;
-$plugin->supported = [401, 405];
+$plugin->supported = [400, 401];
 $plugin->maturity = MATURITY_STABLE;
 $plugin->component = 'tool_smsimport';
