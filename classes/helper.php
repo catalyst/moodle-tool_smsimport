@@ -1297,7 +1297,7 @@ class helper {
         $data->timecreated = time();
         $data->origin = $origin;
         if ($origin == 'web') {
-            $data->ip = $_SERVER['REMOTE_ADDR'];
+            $data->ip = getremoteaddr();
         }
         if (!(isset($data->userid))) {
             $data->userid = $USER->id;
