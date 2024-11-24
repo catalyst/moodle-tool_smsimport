@@ -37,17 +37,21 @@ function xmldb_tool_smsimport_upgrade($oldversion) {
 
     if ($oldversion < 2024110000) {
         $table = new xmldb_table('tool_sms');
-        $dbman->rename_table($table, 'tool_smsimport');
-
+        if ($dbman->table_exists('tool_sms')) {
+            $dbman->rename_table($table, 'tool_smsimport');
+        }
         $table = new xmldb_table('tool_sms_school');
-        $dbman->rename_table($table, 'tool_smsimport_school');
-
+        if ($dbman->table_exists('tool_sms_school')) {
+            $dbman->rename_table($table, 'tool_smsimport_school');
+        }
         $table = new xmldb_table('tool_sms_school_groups');
-        $dbman->rename_table($table, 'tool_smsimport_school_groups');
-
+        if ($dbman->table_exists('tool_sms_school_groups')) {
+            $dbman->rename_table($table, 'tool_smsimport_school_groups');
+        }
         $table = new xmldb_table('tool_sms_school_log');
-        $dbman->rename_table($table, 'tool_smsimport_school_log');
-
+        if ($dbman->table_exists('tool_sms_school_log')) {
+            $dbman->rename_table($table, 'tool_smsimport_school_log');
+        }
         upgrade_plugin_savepoint(true, 2024110000, 'tool', 'smsimport');
     }
 
