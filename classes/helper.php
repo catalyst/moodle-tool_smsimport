@@ -106,7 +106,7 @@ class helper {
      * Get all SMS schools details.
      *
      * @param array $params key value pair to search
-     * @return object of schools
+     * @return array Return a list of records as an array of objects.
      */
     public static function get_sms_schools($params) {
         global $DB;
