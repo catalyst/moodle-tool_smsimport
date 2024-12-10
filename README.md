@@ -24,6 +24,9 @@ insert into mdl_tool_sms values (1, 'example_key', 'example_secret', 'example_na
 # How to use?
 
 * Manage SMS import -> admin/settings.php?section=tool_smsimport_managesms
+    tool_smsimport | smscourse: To link a course to the imported students, add a course and select it here.
+    tool_smsimport | smsuserfields: To link a user custom field to imported students details, add custom user profile fields and select it here.
+
 * Manage SMS import schools -> admin/tool/smsimport/index.php
     You add / edit / delete schools
     You add groups or classes to a school
