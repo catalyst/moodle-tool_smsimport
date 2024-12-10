@@ -42,25 +42,20 @@ if ($hassiteconfig) {
     get_string('managesmsschools', 'tool_smsimport'),
     new moodle_url('/admin/tool/smsimport/index.php')));
 
-    /* Define plugin settings page. */
-    // SMS course: Ideal Assessments.
-    $defaultcourse = 19;
-    // Course category: Schools.
-    $selectedcategory = 5;
+    // Define plugin settings page.
     $options = [];
     foreach (get_courses() as $course) {
-        if ($course->visible == 1 && $course->category == $selectedcategory) {
-            $options[$course->id] = $course->shortname;
+        if ($course->visible == 1 && $course->category) {
+            $options[$course->id] = ucwords($course->shortname);
         }
     }
     $page->add(new admin_setting_configselect('tool_smsimport/smscourse',
-    new lang_string('smscourse', 'tool_smsimport'), new lang_string('smscourse_help', 'tool_smsimport'),
-    $defaultcourse, $options));
+    new lang_string('smscourse', 'tool_smsimport'), new lang_string('smscourse_help', 'tool_smsimport'), 1, $options));
 
     $customfields = [];
     $fields = $DB->get_records('user_info_field', null, 'sortorder ASC');
     foreach ($fields as $field) {
-        $customfields[$field->shortname] = $field->shortname;
+        $customfields[$field->shortname] = $field->name;
     }
     $page->add(new admin_setting_configmultiselect('tool_smsimport/smsuserfields',
     new lang_string('smsuserfields', 'tool_smsimport'), new lang_string('smsuserfields_help', 'tool_smsimport'),
