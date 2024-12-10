@@ -214,7 +214,7 @@ class helper {
             $data->organisation_school_type = school::STANDARD;
             if ($cohortid == 0) {
                 // Create new school and cohort.
-                $result->message[] = "Create a new school: {$schoolname} ";
+                $result->message[] = get_string('notifyschoolcreate', 'tool_smsimport', $schoolname);
                 if ($action == 'edit') {
                     if ($localorg) {
                         $cohortid = local_organisations_create_organisation($data, 'tool_smsimport');
@@ -222,7 +222,7 @@ class helper {
                         $cohortid = cohort_add_cohort($data);
                     }
                     $data->cohortid = $cohortid;
-                    $result->message[] = "Created school with cohort ".$cohortid;
+                    $result->message[] = get_string('notifyschoolcreated', 'tool_smsimport', $cohortid);
                 }
             } else {
                 $schoolname = $DB->get_field('cohort', 'name', ['id' => $cohortid]);
@@ -231,7 +231,7 @@ class helper {
             // Unlink a school.
             if (isset($data->unlink) && $data->unlink) {
                 $logaction = get_string('logdelete', 'tool_smsimport');
-                $result->message[] = "Unlink school from organisation {$schoolname}";
+                $result->message[] = get_string('notifyschoolunlink', 'tool_smsimport', $cohortid);
             }
 
             if ($action == 'edit') {
@@ -264,8 +264,12 @@ class helper {
                         foreach ($deletegroups as $deletegroup) {
                             $deletegroupdata = groups_get_group_by_idnumber($courseid, $deletegroup);
                             $dgroupnamedisplay = str_replace($schoolname, '', $deletegroupdata->name);
-                            $result->message[] = "Unlink SMS school {$schoolname} from group:
-                                {$dgroupnamedisplay} ({$deletegroup})";
+                            $a = [
+                                'schoolname' => $schoolname,
+                                'dgroupnamedisplay' => $dgroupnamedisplay,
+                                'deletegroup' => $deletegroup,
+                            ];
+                            $result->message[] = get_string('notifysmsschoolunlink', 'tool_smsimport', $a);
                             if ($action == 'edit') {
                                 self::delete_sms_school_groups($data->id, $deletegroupdata->id);
                                 $info['groupremove'] = $deletegroup;
@@ -324,8 +328,13 @@ class helper {
                     if (empty($data->unlink) && empty($deletegroups)) {
                         $schoolname = $DB->get_field('cohort', 'name', ['id' => $cohortid]);
                         $groupname = $schoolname."".$groupname;
+                        $a = [
+                            'schoolname' => $schoolname,
+                            'groupnamedisplay' => $groupnamedisplay,
+                            'gidnumber' => $gidnumber,
+                        ];
                         if ($logaction == get_string('logcreate', 'tool_smsimport') ) {
-                            $result->message[] = "Link SMS school {$schoolname} to new group: {$groupnamedisplay} ({$gidnumber})";
+                            $result->message[] = get_string('notifysmsschoollinkgroupnew', 'tool_smsimport', $a);
                             $newgroupdata = new stdClass();
                             $newgroupdata->courseid = $courseid;
                             $newgroupdata->name = $groupname;
@@ -336,7 +345,7 @@ class helper {
                             }
                         }
                         if ($logaction == get_string('logupdate', 'tool_smsimport')) {
-                            $result->message[] = "Link SMS school {$schoolname} to group: {$groupnamedisplay} ({$gidnumber})";
+                            $result->message[] = get_string('notifysmsschoollinkgroup', 'tool_smsimport', $a);
                             $groupdata->idnumber = $gidnumber;
                             $groupdata->name = $groupname;
                             if ($action == 'edit') {
