@@ -24,13 +24,11 @@
 
 namespace tool_smsimport;
 
-use local_organisations\persistent\school;
 use stdClass;
 
 defined('MOODLE_INTERNAL') || die();
 
 require_once($CFG->libdir . '/filelib.php');
-require_once("{$CFG->dirroot}/local/organisations/locallib.php");
 require_once("{$CFG->dirroot}/cohort/lib.php");
 require_once("{$CFG->dirroot}/user/lib.php");
 require_once("{$CFG->dirroot}/user/profile/lib.php");
@@ -115,21 +113,6 @@ class helper {
     }
 
     /**
-     * Check if local_organisations is installed.
-     *
-     * @return boolean
-     */
-    public static function check_local_organisations() {
-        $pluginman = \core_plugin_manager::instance();
-        $plugins = $pluginman->get_installed_plugins('local');
-        if (array_key_exists('organisations', $plugins)) {
-            return true;
-        } else {
-            return false;
-        }
-    }
-
-    /**
      * Edit SMS school details.
      *
      * @param object $data School details
@@ -198,7 +181,6 @@ class helper {
         $data->timemodified = time();
         $result = new stdClass();
         $courseid = get_config('tool_smsimport', 'smscourse');
-        $localorg = self::check_local_organisations();
         // Log record.
         $logrecord = new stdClass();
         $logrecord->schoolno = $data->schoolno;
@@ -208,19 +190,11 @@ class helper {
             $logaction = get_string('logcreate', 'tool_smsimport');
             $cohortid = $data->cohortid;
             $schoolname = $data->name;
-            // Plugin local_organisations school update.
-            $data->organisationname = $schoolname;
-            $data->organisationcode = $data->schoolno;
-            $data->organisation_school_type = school::STANDARD;
             if ($cohortid == 0) {
                 // Create new school and cohort.
                 $result->message[] = get_string('notifyschoolcreate', 'tool_smsimport', $schoolname);
                 if ($action == 'edit') {
-                    if ($localorg) {
-                        $cohortid = local_organisations_create_organisation($data, 'tool_smsimport');
-                    } else {
-                        $cohortid = cohort_add_cohort($data);
-                    }
+                    $cohortid = cohort_add_cohort($data);
                     $data->cohortid = $cohortid;
                     $result->message[] = get_string('notifyschoolcreated', 'tool_smsimport', $cohortid);
                 }
@@ -298,7 +272,7 @@ class helper {
                         $logaction = get_string('logupdate', 'tool_smsimport');
                     } else {
                         // If the SMS school is linked to existing school.
-                        if ($localorg && $records = local_organisations_get_organisation_groups($cohortid, $courseid)) {
+                        if ($records = get_cohort_groups($cohortid, $courseid)) {
                             $ngroupname = str_replace(' ', '', $groupname);
                             // Check if the existing school's group match the SMS school group.
                             $logaction = get_string('logcreate', 'tool_smsimport');
@@ -356,9 +330,6 @@ class helper {
                         if ($action == 'edit') {
                             // Link groups to local organisation schools.
                             self::save_sms_school_groups($data->id, $groupid);
-                            if ($localorg) {
-                                local_organisations_store_organisation_group($cohortid, $groupid);
-                            }
                             $data->groupid = $groupid;
                             // Log event.
                             if ($logaction) {
@@ -427,6 +398,28 @@ class helper {
         return true;
     }
 
+    /**
+     * Get groups to cohort-group linking table.
+     *
+     * @param int $cohortid
+     * @param int $groupid
+     * @return array of groups
+     */
+    function get_cohort_groups($cohortid, $courseid) {
+        global $DB;
+        $sql = "SELECT g.*, og.orggroupname FROM {groups} g
+        JOIN {tool_smsimport_school_groups} og ON g.id = og.groupid
+        WHERE g.courseid = :courseid
+        AND og.cohortid = :cohortid
+        AND g.name not ilike '%cohort%'";
+        $params = array('courseid' => $courseid, 'cohortid' => $cohortid);
+
+        $groups = $DB->get_records_sql($sql, $params);
+
+        return $groups;
+
+    }
+
 
     /**
      * Link and unlink a group to a SMS school.
@@ -474,23 +467,19 @@ class helper {
      */
     public static function is_teacher($userid, $courseid) {
         global $DB;
-        if (self::check_local_organisations()) {
-            $isteacher = false;
-            $context = \context_course::instance($courseid);
-            // Get roles for the course.
-            $roles = $DB->get_records_sql("SELECT DISTINCT(ra.id), r.id AS role, r.shortname
-                FROM {role_assignments} ra, {role} r
-                WHERE userid = ?
-                AND contextid = ?
-                AND r.id = ra.roleid", [$userid, $context->id]);
-            foreach ($roles as $role) {
-                if ($role->shortname == 'teacher') {
-                    $isteacher = true;
-                    break;
-                }
+        $isteacher = false;
+        $context = \context_course::instance($courseid);
+        // Get roles for the course.
+        $roles = $DB->get_records_sql("SELECT DISTINCT(ra.id), r.id AS role, r.shortname
+            FROM {role_assignments} ra, {role} r
+            WHERE userid = ?
+            AND contextid = ?
+            AND r.id = ra.roleid", [$userid, $context->id]);
+        foreach ($roles as $role) {
+            if ($role->shortname == 'teacher') {
+                $isteacher = true;
+                break;
             }
-        } else {
-            $isteacher = true;
         }
         return $isteacher;
     }
@@ -663,7 +652,6 @@ class helper {
         $logrecord->other = '';
         $cohortid = $info['cohortid'];
         $userid = $info['userid'];
-        $localorg = self::check_local_organisations();
         // If student exists in other schools then deal with transfer-in/transfer-out.
         $otherrecords = $DB->get_records_select('cohort_members', 'cohortid != :cohortid AND userid = :userid',
         ['cohortid' => $cohortid, 'userid' => $userid], '',  '*');
@@ -677,11 +665,6 @@ class helper {
                 $info['transferin'] = $school->schoolno;
                 $info['transferout'] = $oldschool->schoolno;
                 if (empty($oldschool)) {
-                    if ($localorg) {
-                        $orgschool = school::from_cohort_id($oldcohortid);
-                        $oldschool->transferout = $orgschool->get('transferout');
-                        $oldschool->cohortid = $oldcohortid;
-                    }
                     $oldschool->schoolno = 0;
                     $info['transferout'] = $oldschool->schoolno." ({$oldcohortid})";
                 }
@@ -765,24 +748,17 @@ class helper {
         $updateuser = 0;
         $syncerror = '';
         $usersparsed = new stdClass();
-        $localorg = self::check_local_organisations();
+        $groups = self::get_sms_school_groups($school->id, 'schoolid');
         // Get SMS school config.
         $cohortid = $school->cohortid;
         if ($logsource == 'cron') {
             // The users are coming from an external API.
             $authtype = 'webservice';
             $linebreak = "\n";
-            $groups = self::get_sms_school_groups($school->id, 'schoolid');
+
         } else {
-            if ($localorg) {
-                $authtype = 'nologin';
-                $linebreak = "<br>";
-                $orggroups = local_organisations_get_organisation_groups($cohortid, $courseid);
-                foreach ($orggroups as $orggroup) {
-                    $orggroupname = str_replace($school->name, '', $orggroup->orggroupname);
-                    $groups[$orggroup->id] = $orggroupname;
-                }
-            }
+            $authtype = 'login';
+            $linebreak = "\n";
         }
         // Log record.
         $logrecord = new stdClass();
@@ -991,7 +967,6 @@ class helper {
      * @return string translated data value
      */
     public static function sms_data_mapping($name, $value) {
-        $localorg = self::check_local_organisations();
         $finalvalue = '';
         $error = '';
         $customfield = profile_get_custom_field_data_by_shortname($name);
@@ -1002,26 +977,10 @@ class helper {
         switch ($name) {
             // Format e.g. : Australian.
             case "ethnicity":
-                if ($localorg) {
-                    if (empty($value)) {
-                        $finalvalue = 'Unknown';
-                    } else {
-                        $sitevalue = explode("\n", $customfield->param1);
-                        $multiet = explode(",", $value);
-                        /* If there are multiple ethnicities, take the first one and ignore the rest.
-                           as this profile field currently only supports taking a single value.
-                           */
-                        $value = $multiet[0];
-                        if (!$finalvalue = local_organisations_convert_ethnicity_to_category($value)) {
-                            $et = explode("/", $value);
-                            foreach ($et as $ethnicity) {
-                                if (!$finalvalue = local_organisations_convert_ethnicity_to_category($ethnicity)) {
-                                    $finalvalue = 'Unknown';
-                                    $error = 1;
-                                }
-                            }
-                        }
-                    }
+                if (empty($value)) {
+                    $finalvalue = 'Unknown';
+                } else {
+                    $finalvalue = $value;
                 }
             break;
 
@@ -1535,9 +1494,6 @@ class helper {
                                 $newgroupdata->courseid = $courseid;
                                 $newgroupdata->name = $groupname;
                                 $groupid = groups_create_group($newgroupdata);
-                                if (self::check_local_organisations()) {
-                                    local_organisations_store_organisation_group($school->cohortid, $groupid);
-                                }
                             }
                         }
                         $user->$label = trim($value);
