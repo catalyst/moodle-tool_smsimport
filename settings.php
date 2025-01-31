@@ -38,6 +38,11 @@ if ($hassiteconfig) {
     $ADMIN->add('tool_smsimport', $page);
 
     // Plugin listing page.
+    $ADMIN->add('tool_smsimport', new admin_externalpage('tool_smsimport_sms',
+    get_string('addsms', 'tool_smsimport'),
+    new moodle_url('/admin/tool/smsimport/addsms.php')));
+
+    // Plugin listing page.
     $ADMIN->add('tool_smsimport', new admin_externalpage('tool_smsimport_index',
     get_string('managesmsschools', 'tool_smsimport'),
     new moodle_url('/admin/tool/smsimport/index.php')));
