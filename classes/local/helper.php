@@ -194,6 +194,7 @@ class helper {
                 // Create new school and cohort.
                 $result->message[] = get_string('notifyschoolcreate', 'tool_smsimport', $schoolname);
                 if ($action == 'edit') {
+                    $data->contextid = 1;
                     $cohortid = cohort_add_cohort($data);
                     $data->cohortid = $cohortid;
                     $result->message[] = get_string('notifyschoolcreated', 'tool_smsimport', $cohortid);
@@ -277,8 +278,7 @@ class helper {
                             // Check if the existing school's group match the SMS school group.
                             $logaction = get_string('logcreate', 'tool_smsimport');
                             foreach ($records as $record) {
-                                $norggroupname = str_replace(' ', '', $record->orggroupname);
-                                if ($ngroupname == $norggroupname && $gidnumber != $record->idnumber) {
+                                if ($gidnumber != $record->idnumber) {
                                     $logaction = get_string('logupdate', 'tool_smsimport');
                                     $groupid = $record->id;
                                     $groupdata = groups_get_group($groupid);
@@ -301,7 +301,7 @@ class helper {
                     // Add/Update groups.
                     if (empty($data->unlink) && empty($deletegroups)) {
                         $schoolname = $DB->get_field('cohort', 'name', ['id' => $cohortid]);
-                        $groupname = $schoolname."".$groupname;
+                        $groupname = $groupname;
                         $a = [
                             'schoolname' => $schoolname,
                             'groupnamedisplay' => $groupnamedisplay,
@@ -407,10 +407,9 @@ class helper {
      */
     public static function get_cohort_groups($cohortid, $courseid) {
         global $DB;
-        $sql = "SELECT g.*, og.orggroupname FROM {groups} g
+        $sql = "SELECT g.* FROM {groups} g
         JOIN {tool_smsimport_school_groups} og ON g.id = og.groupid
         WHERE g.courseid = :courseid
-        AND og.cohortid = :cohortid
         AND g.name not ilike '%cohort%'";
         $params = ['courseid' => $courseid, 'cohortid' => $cohortid];
 
@@ -1487,7 +1486,7 @@ class helper {
                             // Create group if it does not exist.
                             $courseid = get_config('tool_smsimport', 'smscourse');
                             $schoolname = $DB->get_field('cohort', 'name', ['id' => $school->cohortid]);
-                            $groupname = $schoolname.$value;
+                            $groupname = $value;
                             $groupid = groups_get_group_by_name($courseid, $groupname);
                             if (empty($groupid)) {
                                 $newgroupdata = new stdClass();
