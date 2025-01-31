@@ -44,7 +44,8 @@ class add_sms_form extends moodleform {
 
         $mform = $this->_form;
 
-        $mform->addElement('textarea', 'smsconfig', get_string("smsconfig", "tool_smsimport"), 'wrap="virtual" rows="20" cols="50"');
+        $mform->addElement('textarea', 'smsconfig', get_string("smsconfig", "tool_smsimport"),
+        'wrap="virtual" rows="20" cols="50"');
         $mform->addHelpButton('smsconfig', 'smsconfig', 'tool_smsimport');
 
         $this->add_action_buttons();

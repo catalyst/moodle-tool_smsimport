@@ -23,7 +23,6 @@
  */
 
 use tool_smsimport\local\form\add_sms_form;
-use tool_smsimport\local\helper;
 
 require_once('../../../config.php');
 
@@ -68,22 +67,22 @@ if ($mform->is_cancelled()) {
     if ($data->smsconfig) {
         global $DB;
         $records = explode(PHP_EOL, $data->smsconfig);
-        foreach($records as $record) {
+        foreach ($records as $record) {
             $record = str_getcsv($record);
             $data = [
                 'key' => trim($record[0]),
-                'secret' =>  trim($record[1]),
-                'name' =>  trim($record[2]),
-                'url1' =>  trim($record[3]),
+                'secret' => trim($record[1]),
+                'name' => trim($record[2]),
+                'url1' => trim($record[3]),
                 'url2' => trim($record[4]),
-                'url3' =>  trim($record[5]),
-                'timemodified' => time()
+                'url3' => trim($record[5]),
+                'timemodified' => time(),
             ];
             if ($id = $DB->get_field('tool_smsimport', 'id', ['name' => $data['name']])) {
                 $data['id'] = $id;
                 $DB->update_record("tool_smsimport", $data);
             } else {
-                $data['timecreated'] =  time();
+                $data['timecreated'] = time();
                 $DB->insert_record("tool_smsimport", $data);
             }
         }
