@@ -22,8 +22,8 @@
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-use tool_smsimport\form\add_school_form;
-use tool_smsimport\helper;
+use tool_smsimport\local\form\add_school_form;
+use tool_smsimport\local\helper;
 
 require_once('../../../config.php');
 
@@ -53,11 +53,10 @@ $school->id = null;
 if ($id) {
     $urlparams['id'] = $id;
     $urlparams['sesskey'] = sesskey();
-    $localorg = helper::check_local_organisations();
     // Load school if exists.
     if (!$school = helper::get_sms_school(['id' => $id])) {
         throw new \moodle_exception('wrongschoolid', 'tool_smsimport');
-    } else if ($localorg) {
+    } else {
         if ($school->cohortid) {
             $school->groups = helper::get_sms_school_groups($school->id, 'schoolid');
         }

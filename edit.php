@@ -22,9 +22,9 @@
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-use tool_smsimport\form\edit_school_form;
-use tool_smsimport\form\save_school_form;
-use tool_smsimport\helper;
+use tool_smsimport\local\form\edit_school_form;
+use tool_smsimport\local\form\save_school_form;
+use tool_smsimport\local\helper;
 
 require_once('../../../config.php');
 

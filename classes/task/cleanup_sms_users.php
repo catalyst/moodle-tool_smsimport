@@ -23,7 +23,7 @@
  */
 
 namespace tool_smsimport\task;
-use tool_smsimport\helper;
+use tool_smsimport\local\helper;
 
 /**
  * Simple task class responsible for importing users from SMS schools.

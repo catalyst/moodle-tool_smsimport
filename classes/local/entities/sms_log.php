@@ -34,7 +34,7 @@ use lang_string;
 use core_reportbuilder\local\entities\base;
 use core_reportbuilder\local\report\column;
 use core_reportbuilder\local\report\filter;
-use tool_smsimport\helper;
+use tool_smsimport\local\helper;
 
 /**
  * tool_smsimport SMS log entity class implementation

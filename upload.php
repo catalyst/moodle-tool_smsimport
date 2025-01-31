@@ -22,9 +22,9 @@
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-use tool_smsimport\form\upload_users_form;
-use tool_smsimport\helper;
-use local_organisations\persistent\school;
+use tool_smsimport\local\form\upload_users_form;
+use tool_smsimport\local\helper;
+
 require_once('../../../config.php');
 require_once($CFG->libdir . '/adminlib.php');
 
@@ -71,10 +71,6 @@ if ($importform->is_cancelled()) {
     if (empty($school)) {
         $school = new stdClass();
         $school->cohortid = $formdata->cohortid;
-        if (helper::check_local_organisations()) {
-            $orgschool = school::from_cohort_id($school->cohortid);
-            $school->transferin = $orgschool->get('transferin');
-        }
         $school->schoolno = 0;
         $school->name = $DB->get_field('cohort', 'name',
                 ['id' => $school->cohortid]);

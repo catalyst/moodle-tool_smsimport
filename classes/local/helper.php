@@ -22,7 +22,7 @@
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-namespace tool_smsimport;
+namespace tool_smsimport\local;
 
 use stdClass;
 
@@ -272,7 +272,7 @@ class helper {
                         $logaction = get_string('logupdate', 'tool_smsimport');
                     } else {
                         // If the SMS school is linked to existing school.
-                        if ($records = get_cohort_groups($cohortid, $courseid)) {
+                        if ($records = self::get_cohort_groups($cohortid, $courseid)) {
                             $ngroupname = str_replace(' ', '', $groupname);
                             // Check if the existing school's group match the SMS school group.
                             $logaction = get_string('logcreate', 'tool_smsimport');
@@ -402,17 +402,17 @@ class helper {
      * Get groups to cohort-group linking table.
      *
      * @param int $cohortid
-     * @param int $groupid
+     * @param int $courseid
      * @return array of groups
      */
-    function get_cohort_groups($cohortid, $courseid) {
+    public static function get_cohort_groups($cohortid, $courseid) {
         global $DB;
         $sql = "SELECT g.*, og.orggroupname FROM {groups} g
         JOIN {tool_smsimport_school_groups} og ON g.id = og.groupid
         WHERE g.courseid = :courseid
         AND og.cohortid = :cohortid
         AND g.name not ilike '%cohort%'";
-        $params = array('courseid' => $courseid, 'cohortid' => $cohortid);
+        $params = ['courseid' => $courseid, 'cohortid' => $cohortid];
 
         $groups = $DB->get_records_sql($sql, $params);
 
