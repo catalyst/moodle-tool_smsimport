@@ -22,11 +22,9 @@ The plugin can be configured from Admin -> Plugins -> Admin tools -> Student man
 # Setup
 
 ## Add SMS
-The SMS details are to be entered manually in the plugin table directly
-```
-For e.g.
-insert into mdl_tool_sms values (1, 'example_key', 'example_secret', 'example_name', '1718295277', '1718295277', 'https://myexample.com/gettoken', 'https://myexample.com/getStudentsData', 'https://myexample.com/getGroupsData');
-```
+
+Add student management system -> admin/tool/smsimport/addsms.php
+
 ## Add school
 
 Manage SMS import schools -> admin/tool/smsimport/index.php
