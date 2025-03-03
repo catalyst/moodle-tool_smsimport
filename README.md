@@ -44,13 +44,14 @@ Manage SMS import schools -> admin/tool/smsimport/index.php
 
 ## Create user custom profiles
 Admin -> User -> user profile fields
-* dob
-* school
-* year
-* room
-* gender
-* ethnicity
-
+* dob -> Date/Time
+* school -> Text input
+* year -> Text input
+* room -> Text input
+* gender -> Drop-down Menu
+    Values:
+    Male, Female, Not Specified
+* ethnicity -> Text input
 
 # Screenshots
 
