@@ -15,17 +15,17 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * Upload users via csv tool_smsimport plugin.
+ * Add school form tool_smsimport plugin.
  *
  * @package   tool_smsimport
  * @copyright 2024, Sumaiya Javed <sumaiya.javed@catalyst.net.nz>
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-use tool_smsimport\local\form\upload_users_form;
-use tool_smsimport\local\helper;
+use tool_smsimport\local\form\add_sms_form;
 
 require_once('../../../config.php');
+
 require_once($CFG->libdir . '/adminlib.php');
 
 defined('MOODLE_INTERNAL') || die();
@@ -41,13 +41,13 @@ if (!$context = context_system::instance()) {
 
 require_capability('moodle/site:config', $context);
 
-$returnurl = new moodle_url('/admin/tool/smsimport/upload.php');
+$returnurl = new moodle_url('/admin/tool/smsimport/index.php');
 
-$pageurl = '/admin/tool/smsimport/upload.php';
+$pageurl = '/admin/tool/smsimport/addsms.php';
 $PAGE->set_url($pageurl);
 
 $PAGE->navbar->add(get_string('pluginname', 'tool_smsimport'), $returnurl);
-$PAGE->navbar->add(get_string('addschool', 'tool_smsimport'));
+$PAGE->navbar->add(get_string('addsms', 'tool_smsimport'));
 
 $PAGE->set_pagelayout('admin');
 $PAGE->set_context($context);
@@ -56,43 +56,48 @@ $PAGE->set_primary_active_tab('siteadminnode');
 $PAGE->set_title(get_string('sms', 'tool_smsimport'));
 $PAGE->set_heading(get_string('sms', 'tool_smsimport'));
 
-echo $OUTPUT->header();
-echo $OUTPUT->heading(get_string('uploadusers', 'tool_smsimport'));
-
 // Setup the form.
-$importform = new upload_users_form(null);
+$mform = new add_sms_form();
+echo $OUTPUT->header();
+echo $OUTPUT->heading(get_string('addsms', 'tool_smsimport'));
 // Process the form.
-if ($importform->is_cancelled()) {
+if ($mform->is_cancelled()) {
     redirect($returnurl);
-} else if ($formdata = $importform->get_data()) {
-    // Get school details.
-    $school = helper::get_sms_school(['cohortid' => $formdata->cohortid]);
-    // If it is a non SMS school then use core cohort to retrieve details.
-    if (empty($school)) {
-        $school = new stdClass();
-        $school->cohortid = $formdata->cohortid;
-        $school->schoolno = 0;
-        $school->name = $DB->get_field('cohort', 'name',
-                ['id' => $school->cohortid]);
+} else if ($data = $mform->get_data()) {
+    if ($data->smsconfig) {
+        global $DB;
+        $records = explode(PHP_EOL, $data->smsconfig);
+        foreach ($records as $record) {
+            $record = str_getcsv($record);
+            $data = [
+                'key' => trim($record[0]),
+                'secret' => trim($record[1]),
+                'name' => trim($record[2]),
+                'url1' => trim($record[3]),
+                'url2' => trim($record[4]),
+                'url3' => trim($record[5]),
+                'timemodified' => time(),
+            ];
+            if ($id = $DB->get_field('tool_smsimport', 'id', ['name' => $data['name']])) {
+                $data['id'] = $id;
+                $DB->update_record("tool_smsimport", $data);
+            } else {
+                $data['timecreated'] = time();
+                $DB->insert_record("tool_smsimport", $data);
+            }
+        }
+        echo '<div class="alert alert-info">'.get_string('smssuccess', 'tool_smsimport').'</div>';
+            // Add buttons.
+            echo '<div class="">
+            <a class="m-3 btn btn-secondary" href="'.$returnurl.'">
+                ' . get_string('goback', 'tool_smsimport') . '
+            </a>
+        </div>';
     }
-    $text = $importform->get_file_content('userfile');
-    $options = [
-        'format' => 'text',
-        'delimiter' => $formdata->delimiter_name,
-        'encoding' => $formdata->encoding,
-        'source' => 'web',
-    ];
-    $records = helper::parse_data($text, $options, $school);
-    $result = helper::import_school_users($school, $records, 'web');
-    if ($result) {
-        echo html_writer::start_tag('p');
-        echo html_writer::link($returnurl , get_string("continue"), ['class' => 'btn btn-primary']);
-        echo html_writer::end_tag('p');
-    }
-    echo $OUTPUT->footer();
-    die;
 } else {
     // Display the form.
-    $importform->display();
+    $mform->display();
 }
+
+
 echo $OUTPUT->footer();

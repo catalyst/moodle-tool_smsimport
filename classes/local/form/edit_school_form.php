@@ -22,9 +22,9 @@
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-namespace tool_smsimport\form;
+namespace tool_smsimport\local\form;
 
-use tool_smsimport\helper;
+use tool_smsimport\local\helper;
 use moodleform;
 
 defined('MOODLE_INTERNAL') || die();
@@ -61,23 +61,22 @@ class edit_school_form extends moodleform {
             }
             $select->setSelected($selected);
         }
-        if (helper::check_local_organisations()) {
-            // Get system level cohorts.
-            global $DB;
-            $records = $DB->get_records('cohort', ['visible' => 1, 'contextid' => 1], 'name');
-            $cohorts[0] = 'None';
-            foreach ($records as $record) {
-                $cohorts[$record->id] = $record->name;
-            }
-            $select = $mform->addElement('select', 'cohortid', get_string('cohortid', 'tool_smsimport'), $cohorts);
-            if (!empty($school->cohortid)) {
-                $mform->updateElementAttr('cohortid', ['disabled' => 'disabled']);
-                $mform->addElement('checkbox', 'unlink', get_string('unlink', 'tool_smsimport'));
-                $mform->addHelpButton('unlink', 'unlink', 'tool_smsimport');
-            }
-            $select->setSelected($school->cohortid);
-            $mform->addHelpButton('cohortid', 'cohortid', 'tool_smsimport');
+
+        // Get system level cohorts.
+        global $DB;
+        $records = $DB->get_records('cohort', ['visible' => 1, 'contextid' => 1], 'name');
+        $cohorts[0] = 'None';
+        foreach ($records as $record) {
+            $cohorts[$record->id] = $record->name;
         }
+        $select = $mform->addElement('select', 'cohortid', get_string('cohortid', 'tool_smsimport'), $cohorts);
+        if (!empty($school->cohortid)) {
+            $mform->updateElementAttr('cohortid', ['disabled' => 'disabled']);
+            $mform->addElement('checkbox', 'unlink', get_string('unlink', 'tool_smsimport'));
+            $mform->addHelpButton('unlink', 'unlink', 'tool_smsimport');
+        }
+        $select->setSelected($school->cohortid);
+        $mform->addHelpButton('cohortid', 'cohortid', 'tool_smsimport');
 
         $mform->addElement('hidden', 'id');
         $mform->setType('id', PARAM_INT);

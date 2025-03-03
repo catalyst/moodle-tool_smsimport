@@ -22,9 +22,9 @@
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-namespace tool_smsimport\form;
+namespace tool_smsimport\local\form;
 
-use tool_smsimport\helper;
+use tool_smsimport\local\helper;
 use moodleform;
 
 defined('MOODLE_INTERNAL') || die();

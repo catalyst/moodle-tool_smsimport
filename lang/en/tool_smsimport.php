@@ -24,6 +24,7 @@
 
 $string['pluginname'] = 'Student management system import';
 $string['sms'] = 'Student management system';
+$string['addsms'] = 'Add student management system';
 $string['schools'] = 'Schools';
 $string['addschool'] = 'Add school';
 $string['editschool'] = 'Edit school';
@@ -125,3 +126,14 @@ $string['privacy:metadata:origin'] = 'The origin of the action';
 $string['privacy:metadata:ip'] = 'The IP address if the origin is web';
 $string['privacy:metadata:tool_sms_school_log'] = 'SMS import log record';
 $string['invaliddobformat'] = 'Invalid date of birth format used. Please use YYYY-MM-DD.';
+$string['notifyschoolcreate'] = 'Create a new school: {$a}';
+$string['notifyschoolcreated'] = 'Created school with cohort {$a}';
+$string['notifyschoolunlink'] = 'Unlink school from organisation {$a}';
+$string['notifysmsschoolunlink'] = 'Unlink SMS school {$a->schoolname} from group: {$a->dgroupnamedisplay} {$a->deletegroup}';
+$string['notifysmsschoollinkgroup'] = 'Link SMS school {$a->schoolname} to group: {$a->groupnamedisplay} {$a->gidnumber}';
+$string['notifysmsschoollinkgroupnew'] = 'Link SMS school {$a->schoolname} to new group: {$a->groupnamedisplay} {$a->gidnumber}';
+$string['oryoucan'] = 'Or you can';
+$string['smsconfig'] = 'SMS configuration';
+$string['smsconfig_help'] = 'Add SMS configuration in CSV format. Add one per each line. For e.g.example_key, example_secret, example_name, https://myexample.com/gettoken, https://myexample.com/getStudentsData, https://myexample.com/getGroupsData<br><br> Please note that the example_name is considered a unique field and it will be replaced with new values,  if entered twice.';
+$string['smssuccess'] = 'SMS successfully added';
+

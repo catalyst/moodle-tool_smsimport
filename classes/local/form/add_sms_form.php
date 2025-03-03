@@ -15,40 +15,39 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * tool_smsimport task class responsible for cleanuping groups and other stuff from students in a SMS school.
+ * Add SMS form tool_smsimport plugin.
  *
  * @package   tool_smsimport
  * @copyright 2024, Sumaiya Javed <sumaiya.javed@catalyst.net.nz>
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-namespace tool_smsimport\task;
-use tool_smsimport\local\helper;
+namespace tool_smsimport\local\form;
+use moodleform;
+
+defined('MOODLE_INTERNAL') || die();
+
+require_once("$CFG->libdir/formslib.php");
 
 /**
- * Simple task class responsible for importing users from SMS schools.
+ * Add SMS form tool_smsimport plugin.
+ *
+ * @package   tool_smsimport
+ * @copyright 2024, Sumaiya Javed <sumaiya.javed@catalyst.net.nz>
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-class cleanup_sms_users extends \core\task\scheduled_task {
-
+class add_sms_form extends moodleform {
     /**
-     * Return the task's name as shown in admin screens.
-     *
-     * @return string
+     * SMS form definition.
      */
-    public function get_name() {
-        return get_string('taskcleanupsmsusers', 'tool_smsimport');
-    }
+    public function definition() {
 
-    /**
-     * Execute the task.
-     */
-    public function execute() {
-        $params = ['suspend' => 0];
-        $records = helper::get_sms_schools($params);
-        foreach ($records as $record) {
-            if ($record->cohortid > 0) {
-                helper::cleanup_sms_school_users($record);
-            }
-        }
+        $mform = $this->_form;
+
+        $mform->addElement('textarea', 'smsconfig', get_string("smsconfig", "tool_smsimport"),
+        'wrap="virtual" rows="20" cols="50"');
+        $mform->addHelpButton('smsconfig', 'smsconfig', 'tool_smsimport');
+
+        $this->add_action_buttons();
     }
 }

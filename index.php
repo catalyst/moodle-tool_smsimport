@@ -111,10 +111,11 @@ foreach ($records as $record) {
 echo \html_writer::table($table);
 
 // Add button to add a new school.
+echo '<a href="' . new moodle_url('addsms.php') . '" class="btn btn-secondary">' . get_string('addsms', 'tool_smsimport') . '</a> ';
 echo '<a href="' . $urladd . '" class="btn btn-secondary">' . get_string('addschool', 'tool_smsimport') . '</a>';
 
 echo html_writer::start_tag('p');
-echo "Or you can ";
+echo get_string('oryoucan', 'tool_smsimport');
 echo html_writer::link(new moodle_url('upload.php') , get_string('uploadusers', 'tool_smsimport'));
 echo html_writer::end_tag('p');
 
