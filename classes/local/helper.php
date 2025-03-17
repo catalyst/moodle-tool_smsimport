@@ -373,7 +373,7 @@ class helper {
         $fields = [
             'customint2' => -1,
             'customint1' => $cohortid,
-            'roleid' => 5,
+            'roleid' => get_config('tool_smsimport', 'smsstudentrole'),
             'status' => 0,
             'courseid' => $courseid,
             'enrol' => $type,
@@ -478,7 +478,7 @@ class helper {
             AND contextid = ?
             AND r.id = ra.roleid", [$userid, $context->id]);
         foreach ($roles as $role) {
-            if ($role->shortname == 'teacher') {
+            if ($role->shortname == get_config('tool_smsimport', 'smsteacherrole')) {
                 $isteacher = true;
                 break;
             }
