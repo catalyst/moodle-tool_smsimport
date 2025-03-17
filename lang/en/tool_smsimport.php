@@ -140,3 +140,5 @@ $string['smsteacherrole'] = 'Teacher role';
 $string['smsteacherrole_help'] = 'The users with this role are skipped from the cleanup task.';
 $string['smsstudentrole'] = 'Student role';
 $string['smsstudentrole_help'] = 'The users imported from the SMS are given this role.';
+$string['smscsvuploadauth'] = 'CSV upload users authentication method';
+$string['smscsvuploadauth_help'] = 'The authentication method assigned to users imported via the SMS CSV upload page /admin/tool/smsimport/upload.php';

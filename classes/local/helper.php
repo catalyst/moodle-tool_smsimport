@@ -145,11 +145,12 @@ class helper {
      */
     public static function unlink_sms_users($cohortid) {
         global $DB;
+        $smscsvuploadauth = get_config('tool_smsimport', 'smscsvuploadauth');
         $records = $DB->get_records('cohort_members', ['cohortid' => $cohortid]);
         foreach ($records as $record) {
             if ($DB->get_field('user', 'auth', ['id' => $record->userid]) == 'webservice') {
-                $sql = "UPDATE {user} SET auth = :nologin WHERE id = :id";
-                $params = ['nologin' => 'nologin', 'id' => $record->userid];
+                $sql = "UPDATE {user} SET auth = :smscsvuploadauth WHERE id = :id";
+                $params = ['smscsvuploadauth' => $smscsvuploadauth, 'id' => $record->userid];
                 $DB->execute($sql, $params);
             }
         }
@@ -771,6 +772,7 @@ class helper {
     public static function import_school_users($school, $smsusers, $logsource = 'cron') {
         global $DB, $CFG, $SITE, $USER;
         $courseid = get_config('tool_smsimport', 'smscourse');
+        $smscsvuploadauth = get_config('tool_smsimport', 'smscsvuploadauth');
         $nsn = 'national student number';
         $total = 0;
         $newusers = 0;
@@ -793,7 +795,7 @@ class helper {
                 $authtype = 'webservice';
                 $linebreak = "\n";
             } else {
-                $authtype = 'nologin';
+                $authtype = $smscsvuploadauth;
                 $linebreak = "<br>";
             }
             $groups = self::get_sms_school_groups($school->id, 'schoolid');

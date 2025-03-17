@@ -82,6 +82,18 @@ if ($hassiteconfig) {
     $page->add(new admin_setting_configselect('tool_smsimport/smsstudentrole',
     new lang_string('smsstudentrole', 'tool_smsimport'), new lang_string('smsstudentrole_help', 'tool_smsimport'), 'student', $roles));
 
+
+    $auths = core_component::get_plugin_list('auth');
+    $authoptions = [];
+    foreach ($auths as $auth => $unused) {
+        $authinst = get_auth_plugin($auth);
+        if (is_enabled_auth($auth)) {
+            $authoptions[$auth] = $auth;
+        }
+    }
+    $page->add(new admin_setting_configselect('tool_smsimport/smscsvuploadauth',
+    new lang_string('smscsvuploadauth', 'tool_smsimport'), new lang_string('smscsvuploadauth_help', 'tool_smsimport'), 'manual', $authoptions));
+
     // Plugin upload page.
     $ADMIN->add('tool_smsimport', new admin_externalpage('tool_smsimport_upload',
     get_string('uploadusers', 'tool_smsimport'),
