@@ -79,7 +79,6 @@ class helper {
      * Get SMS groups details saved in the database.
      *
      * @param string $value field value
-     * @param string $key field name     *
      * @return mixed | boolean
      */
     public static function get_sms_school_groups($value) {
