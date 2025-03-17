@@ -71,10 +71,10 @@ if ($hassiteconfig) {
     1, PARAM_INT));
 
     global $DB;
-    $getroles = $DB->get_records('role', null, '', 'shortname');
+    $getroles = $DB->get_records('role', null, '', 'id, shortname');
     $roles = [];
     foreach ($getroles as $role) {
-        $roles[$role->shortname] = $role->shortname;
+        $roles[$role->id] = $role->shortname;
     }
     $page->add(new admin_setting_configselect('tool_smsimport/smsteacherrole',
     new lang_string('smsteacherrole', 'tool_smsimport'), new lang_string('smsteacherrole_help', 'tool_smsimport'), 'teacher', $roles));

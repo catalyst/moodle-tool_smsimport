@@ -472,13 +472,13 @@ class helper {
         $isteacher = false;
         $context = \context_course::instance($courseid);
         // Get roles for the course.
-        $roles = $DB->get_records_sql("SELECT DISTINCT(ra.id), r.id AS role, r.shortname
+        $roles = $DB->get_records_sql("SELECT DISTINCT(ra.id), r.id AS roleid
             FROM {role_assignments} ra, {role} r
             WHERE userid = ?
             AND contextid = ?
             AND r.id = ra.roleid", [$userid, $context->id]);
         foreach ($roles as $role) {
-            if ($role->shortname == get_config('tool_smsimport', 'smsteacherrole')) {
+            if ($role->roleid == get_config('tool_smsimport', 'smsteacherrole')) {
                 $isteacher = true;
                 break;
             }
