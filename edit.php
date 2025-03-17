@@ -75,7 +75,7 @@ $pagetitle = ucwords($school->name). " -> ".get_string('addgroup', 'tool_smsimpo
 echo $OUTPUT->heading($pagetitle);
 
 if ($school->cohortid) {
-    $school->groups = helper::get_sms_school_groups($school->id, 'schoolid');
+    $school->groups = helper::get_sms_school_groups($school->id);
 }
 
 if ($action == 'select') {
@@ -120,7 +120,7 @@ if ($action == 'edit') {
         $school->cohortid = $saveformdata->cohortid;
         $school->unlink = $saveformdata->unlink;
         $school->groupsselect = explode('-', $saveformdata->groupssave);
-        $groups = helper::get_sms_school_groups($school->id, 'schoolid');
+        $groups = helper::get_sms_school_groups($school->id);
         $result = helper::save_sms_school_details($school, $action, $groups);
 
         if ($result) {

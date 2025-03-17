@@ -82,11 +82,11 @@ class helper {
      * @param string $key field name     *
      * @return mixed | boolean
      */
-    public static function get_sms_school_groups($value, $key) {
+    public static function get_sms_school_groups($value) {
         global $DB;
         $groups = [];
         $sql = "select groupid, idnumber, g.name from {tool_smsimport_school_groups} sg JOIN {groups} g on sg.groupid = g.id
-        WHERE {$key} = :value";
+        WHERE schoolid = :value";
         $params = ['value' => $value];
         if ($linkedgroups = $DB->get_records_sql($sql, $params)) {
             foreach ($linkedgroups as $key => $value) {
@@ -798,7 +798,7 @@ class helper {
                 $authtype = $smscsvuploadauth;
                 $linebreak = "<br>";
             }
-            $groups = self::get_sms_school_groups($school->id, 'schoolid');
+            $groups = self::get_sms_school_groups($school->id);
             if (empty($groups) || $groups == false) {
                 $logrecord->error = 'lognogroups';
                 $logrecord->other = 'lognogroupshelp';
