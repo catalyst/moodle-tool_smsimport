@@ -25,6 +25,11 @@
 namespace tool_smsimport\privacy;
 
 use core_privacy\local\metadata\collection;
+use core_privacy\local\request\approved_contextlist;
+use core_privacy\local\request\contextlist;
+use core_privacy\local\request\userlist;
+use core_privacy\local\request\writer;
+
 
 /**
  * Class provider
@@ -58,5 +63,84 @@ class provider implements \core_privacy\local\metadata\provider,
         ], 'privacy:metadata:tool_sms_school_log');
 
         return $collection;
+    }
+
+    /**
+     * Get the list of contexts that contain user information for the specified user.
+     *
+     * @param int $userid the userid.
+     * @return contextlist the list of contexts containing user info for the user.
+     */
+    public static function get_contexts_for_userid(int $userid): contextlist {
+        global $DB;
+        $contextlist = new contextlist();
+        if ($DB->record_exists('tool_smsimport_school_log', ['userid' => $userid])) {
+            $contextlist->add_system_context();
+        }
+        return $contextlist;
+    }
+
+    /**
+     * Get the list of users who have data within a context.
+     *
+     * @param userlist $userlist The userlist containing the list of users who have data in this context/plugin combination.
+     */
+    public static function get_users_in_context(userlist $userlist) {
+        $context = $userlist->get_context();
+        if (!$context instanceof \context_system) {
+            return;
+        }
+        $sql = "SELECT userid FROM {tool_smsimport_school_log}";
+        $userlist->add_from_sql('userid', $sql, []);
+    }
+
+
+    /**
+     * Export all user data for the specified user, in the specified contexts.
+     *
+     * @param approved_contextlist $contextlist a list of contexts approved for export.
+     */
+    public static function export_user_data(approved_contextlist $contextlist) {
+        global $DB;
+
+        $userid = $contextlist->get_user()->id;
+        foreach ($contextlist as $context) {
+            if ($context->contextlevel == CONTEXT_SYSTEM) {
+                $list = [];
+                // Overrides with a matching userid.
+                $rows = $DB->get_records('tool_smsimport_school_log', ['userid' => $userid]);
+                foreach ($rows as $row) {
+                    $list[] = [
+                        'userid' => $userid,
+                        'schoolno' => $row->schoolno,
+                        'info' => $row->info,
+                        'other' => $row->other,
+                        'origin' => $row->origin,
+                        'ip' => $row->ip,
+                        'timecreated' => $row->timecreated,
+                    ];
+                }
+                writer::with_context($context)->export_data(
+                    [get_string('privacy:metadata:tool_sms_school_log', 'tool_smsimport')],
+                    (object) $list
+                );
+            }
+        }
+    }
+
+    /**
+     * Delete all data for all users in the specified context.
+     *
+     * @param \context $context the context to delete in.
+     */
+    public static function delete_data_for_all_users_in_context(\context $context) {
+        global $DB;
+
+        if (!$context instanceof \context_system) {
+            return;
+        }
+
+        // Delete issue records.
+        $DB->delete_records('tool_smsimport_school_log');
     }
 }
