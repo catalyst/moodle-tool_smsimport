@@ -58,7 +58,7 @@ if ($id) {
         throw new \moodle_exception('wrongschoolid', 'tool_smsimport');
     } else {
         if ($school->cohortid) {
-            $school->groups = helper::get_sms_school_groups($school->id, 'schoolid');
+            $school->groups = helper::get_sms_school_groups($school->id);
         }
     }
 }

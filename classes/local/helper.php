@@ -79,14 +79,13 @@ class helper {
      * Get SMS groups details saved in the database.
      *
      * @param string $value field value
-     * @param string $key field name     *
      * @return mixed | boolean
      */
-    public static function get_sms_school_groups($value, $key) {
+    public static function get_sms_school_groups($value) {
         global $DB;
         $groups = [];
         $sql = "select groupid, idnumber, g.name from {tool_smsimport_school_groups} sg JOIN {groups} g on sg.groupid = g.id
-        WHERE {$key} = :value";
+        WHERE schoolid = :value";
         $params = ['value' => $value];
         if ($linkedgroups = $DB->get_records_sql($sql, $params)) {
             foreach ($linkedgroups as $key => $value) {
@@ -145,11 +144,12 @@ class helper {
      */
     public static function unlink_sms_users($cohortid) {
         global $DB;
+        $smscsvuploadauth = get_config('tool_smsimport', 'smscsvuploadauth');
         $records = $DB->get_records('cohort_members', ['cohortid' => $cohortid]);
         foreach ($records as $record) {
             if ($DB->get_field('user', 'auth', ['id' => $record->userid]) == 'webservice') {
-                $sql = "UPDATE {user} SET auth = :nologin WHERE id = :id";
-                $params = ['nologin' => 'nologin', 'id' => $record->userid];
+                $sql = "UPDATE {user} SET auth = :smscsvuploadauth WHERE id = :id";
+                $params = ['smscsvuploadauth' => $smscsvuploadauth, 'id' => $record->userid];
                 $DB->execute($sql, $params);
             }
         }
@@ -373,7 +373,7 @@ class helper {
         $fields = [
             'customint2' => -1,
             'customint1' => $cohortid,
-            'roleid' => 5,
+            'roleid' => get_config('tool_smsimport', 'smsstudentrole'),
             'status' => 0,
             'courseid' => $courseid,
             'enrol' => $type,
@@ -472,13 +472,13 @@ class helper {
         $isteacher = false;
         $context = \context_course::instance($courseid);
         // Get roles for the course.
-        $roles = $DB->get_records_sql("SELECT DISTINCT(ra.id), r.id AS role, r.shortname
+        $roles = $DB->get_records_sql("SELECT DISTINCT(ra.id), r.id AS roleid
             FROM {role_assignments} ra, {role} r
             WHERE userid = ?
             AND contextid = ?
             AND r.id = ra.roleid", [$userid, $context->id]);
         foreach ($roles as $role) {
-            if ($role->shortname == 'teacher') {
+            if ($role->roleid == get_config('tool_smsimport', 'smsteacherrole')) {
                 $isteacher = true;
                 break;
             }
@@ -771,6 +771,7 @@ class helper {
     public static function import_school_users($school, $smsusers, $logsource = 'cron') {
         global $DB, $CFG, $SITE, $USER;
         $courseid = get_config('tool_smsimport', 'smscourse');
+        $smscsvuploadauth = get_config('tool_smsimport', 'smscsvuploadauth');
         $nsn = 'national student number';
         $total = 0;
         $newusers = 0;
@@ -793,10 +794,10 @@ class helper {
                 $authtype = 'webservice';
                 $linebreak = "\n";
             } else {
-                $authtype = 'nologin';
+                $authtype = $smscsvuploadauth;
                 $linebreak = "<br>";
             }
-            $groups = self::get_sms_school_groups($school->id, 'schoolid');
+            $groups = self::get_sms_school_groups($school->id);
             if (empty($groups) || $groups == false) {
                 $logrecord->error = 'lognogroups';
                 $logrecord->other = 'lognogroupshelp';

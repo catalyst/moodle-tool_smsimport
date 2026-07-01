@@ -29,7 +29,7 @@ $tasks = [
     [
         'classname' => 'tool_smsimport\task\import_sms_users',
         'blocking' => 0,
-        'minute' => 0,
+        'minute' => 'R',
         'hour' => 0,
         'day' => '*',
         'dayofweek' => '*',
@@ -38,7 +38,7 @@ $tasks = [
     [
         'classname' => 'tool_smsimport\task\cleanup_sms_users',
         'blocking' => 0,
-        'minute' => 0,
+        'minute' => 'R',
         'hour' => 0,
         'day' => '*',
         'dayofweek' => '*',
