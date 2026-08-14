@@ -52,5 +52,4 @@ class import_sms_users extends \core\task\scheduled_task {
             }
         }
     }
-
 }

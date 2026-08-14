@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8" ?>
-<XMLDB PATH="admin/tool/smsimport/db" VERSION="2024061300" COMMENT="XMLDB file for Moodle admin/tool/smsimport"
+<XMLDB PATH="admin/tool/smsimport/db" VERSION="20260703" COMMENT="XMLDB file for Moodle admin/tool/smsimport"
     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
     xsi:noNamespaceSchemaLocation="../../../../lib/xmldb/xmldb.xsd"
 >
@@ -12,9 +12,9 @@
         <FIELD NAME="name" TYPE="char" LENGTH="1333" NOTNULL="false" SEQUENCE="false" COMMENT="Name or label for the SMS."/>
         <FIELD NAME="timecreated" TYPE="int" LENGTH="15" NOTNULL="false" SEQUENCE="false" COMMENT="Time the SMS instance was setup"/>
         <FIELD NAME="timemodified" TYPE="int" LENGTH="15" NOTNULL="false" SEQUENCE="false" COMMENT="Time the SMS instance was last modified."/>
-        <FIELD NAME="url1" TYPE="text" LENGTH="300" NOTNULL="false" SEQUENCE="false" COMMENT="The URL of the endpoint"/>
-        <FIELD NAME="url2" TYPE="text" LENGTH="300" NOTNULL="false" SEQUENCE="false" COMMENT="The URL of the endpoint"/>
-        <FIELD NAME="url3" TYPE="text" LENGTH="300" NOTNULL="false" SEQUENCE="false" COMMENT="The URL of the endpoint"/>
+        <FIELD NAME="url1" TYPE="text" NOTNULL="false" SEQUENCE="false" COMMENT="The URL of the endpoint."/>
+        <FIELD NAME="url2" TYPE="text" NOTNULL="false" SEQUENCE="false" COMMENT="The URL of the endpoint."/>
+        <FIELD NAME="url3" TYPE="text" NOTNULL="false" SEQUENCE="false" COMMENT="The URL of the endpoint."/>
       </FIELDS>
       <KEYS>
         <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
@@ -27,9 +27,9 @@
         <FIELD NAME="schoolno" TYPE="char" LENGTH="10" NOTNULL="true" SEQUENCE="false" COMMENT="School ID from the SMS"/>
         <FIELD NAME="moeid" TYPE="char" LENGTH="10" NOTNULL="false" SEQUENCE="false" COMMENT="MoE (Ministry of education) School Id"/>
         <FIELD NAME="name" TYPE="char" LENGTH="100" NOTNULL="true" SEQUENCE="false" COMMENT="Name or label for the school."/>
-        <FIELD NAME="suspend" TYPE="int" LENGTH="1" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="1 means connection is suspended" />
-        <FIELD NAME="transferin" TYPE="int" LENGTH="1" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="Allow student data to be imported" />
-        <FIELD NAME="transferout" TYPE="int" LENGTH="1" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="Allow student data to be exported" />
+        <FIELD NAME="suspend" TYPE="int" LENGTH="1" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="1 means connection is suspended"/>
+        <FIELD NAME="transferin" TYPE="int" LENGTH="1" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="Allow student data to be imported"/>
+        <FIELD NAME="transferout" TYPE="int" LENGTH="1" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="Allow student data to be exported"/>
         <FIELD NAME="cohortid" TYPE="int" LENGTH="10" NOTNULL="false" SEQUENCE="false" COMMENT="The system cohort this school is constructed from"/>
         <FIELD NAME="timecreated" TYPE="int" LENGTH="15" NOTNULL="false" SEQUENCE="false" COMMENT="Time the school instance was setup"/>
         <FIELD NAME="timemodified" TYPE="int" LENGTH="15" NOTNULL="false" SEQUENCE="false" COMMENT="Time the school instance was last modified."/>
@@ -78,5 +78,5 @@
         <INDEX NAME="schoolno" UNIQUE="false" FIELDS="schoolno"/>
       </INDEXES>
     </TABLE>
-</TABLES>
+  </TABLES>
 </XMLDB>

@@ -28,8 +28,7 @@ use tool_smsimport\local\helper;
 require_once('../../../config.php');
 require_once($CFG->libdir . '/adminlib.php');
 
-defined('MOODLE_INTERNAL') || die();
-admin_externalpage_setup('tool_smsimport_index');
+admin_externalpage_setup('tool_smsimport_upload');
 
 global $PAGE;
 

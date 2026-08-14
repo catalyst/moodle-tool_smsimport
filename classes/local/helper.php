@@ -304,7 +304,7 @@ class helper {
                     }
                     // Add/Update groups.
                     if (empty($data->unlink) && empty($deletegroups)) {
-                        $groupname = $schoolname."".$groupname;
+                        $groupname = $groupname;
                         $a = [
                             'schoolname' => $schoolname,
                             'groupnamedisplay' => $groupnamedisplay,
@@ -619,13 +619,14 @@ class helper {
             $profileerror = '';
             $logrecord->error = '';
             $logrecord->other = '';
-            $fieldname = 'profile_field_'.$profilefield;
+            $fieldname = strtolower('profile_field_'.$profilefield);
             if (isset($smsuser->$fieldname)) {
                 $smsprofilefield = $smsuser->$fieldname;
             } else {
                 $smsprofilefield = '';
             }
             $result = self::sms_data_mapping($profilefield, $smsprofilefield);
+            $fieldname = 'profile_field_'.$profilefield;
             $user->$fieldname = $result['data'];
             if ($fieldname == 'profile_field_school') {
                 $user->$fieldname = $school->name;
@@ -666,6 +667,7 @@ class helper {
         $logrecord->other = '';
         $cohortid = $info['cohortid'];
         $userid = $info['userid'];
+        $disableschooltransfer = get_config('tool_smsimport', 'disableschooltransfer');
         if ($logsource == 'cron') {
             // Check if this group belongs to the user's cohort.
             if ($school->id != $DB->get_field('tool_smsimport_school_groups', 'schoolid', ['groupid' => $groupid])) {
@@ -678,7 +680,7 @@ class helper {
         $otherrecords = $DB->get_records_select('cohort_members', 'cohortid != :cohortid AND userid = :userid',
         ['cohortid' => $cohortid, 'userid' => $userid], '',  '*');
         $otherschools = json_encode($otherrecords);
-        if (!empty($otherrecords)) {
+        if (!empty($otherrecords) && !$disableschooltransfer) {
             mtrace("User exists in other schools {$otherschools}.", $linebreak);
             mtrace("Start user transfer-in/transfer-out process.", $linebreak);
             foreach ($otherrecords as $otherrecord) {
@@ -848,7 +850,14 @@ class helper {
                             We check against the group idnumber which is the GroupNo from the endpoint
                             We rely on the idnumber and not the name of the group.
                         */
-                        if ($grecord = self::find_group($smsuser->profile_field_room, $school)) {
+                        if (is_array($smsuser->profile_field_room)) {
+                            foreach ($smsuser->profile_field_room as $smsgroup) {
+                                if ($grecord = self::find_group($smsgroup->GroupName, $school)) {
+                                    $groupid = $grecord->id;
+                                    $groupids[$groupid] = $grecord->id;
+                                }
+                            }
+                        } else if ($grecord = self::find_group($smsuser->profile_field_room, $school)) {
                             $groupid = $grecord->id;
                         }
                     } else {
@@ -862,7 +871,6 @@ class helper {
                         mtrace ("{$currenttime }: Group not found for" .
                         " smsuser->nsn: " .$usernsn . " ". $smsuser->firstname . " ". $smsuser->surname, $linebreak);
                     }
-
                     if (!empty($groupid) && !empty($usernsn)) {
                         $sql = "select * from {user} WHERE idnumber = :idnumber OR idnumber = :wzeroidnumber
                         AND deleted = 0 AND suspended = 0";
@@ -904,8 +912,15 @@ class helper {
                             // Stops user password generation email as email addresses are invalid.
                             unset_user_preference('create_password', $user->id);
                             // School transfer-in/transfer-out.
-                            $transfererror = self::transfer_user_school($school, $groupid, $usernsn, $linebreak,
+                            if (isset($groupids)) {
+                                foreach ($groupids as $groupid) {
+                                    $transfererror = self::transfer_user_school($school, $groupid, $usernsn, $linebreak,
+                                        $logrecord, $logsource, $info);
+                                }
+                            } else {
+                                $transfererror = self::transfer_user_school($school, $groupid, $usernsn, $linebreak,
                             $logrecord, $logsource, $info);
+                            }
                             if (empty($transfererror)) {
                                 if ($updateuser) {
                                     user_update_user($user, false, false);
@@ -977,7 +992,6 @@ class helper {
         $group->idnumber = 0;
         $smsgroups = self::get_sms_group($school);
         $groupname = str_replace(' ', '', $groupname);
-
         foreach ($smsgroups as $key => $value) {
             $value = str_replace(' ', '', $value);
             if (self::remove_accent($value) == self::remove_accent($groupname)) {
@@ -1097,6 +1111,9 @@ class helper {
             case "dob":
                 /* Formats supported: 2019-03-25 | 2019/03/25 | 25-03-2019 | 25/03/2019 | 25.03.2019 | 25.03.2019
                  * 25 Nov 2019 | 25 November 2015.  */
+                if (strpos($value, "T00:00:00") !== false) {
+                    $value = str_replace("T00:00:00", '', $value);
+                }
                 if (strpos($value, ".") !== false) {
                     $value = str_replace('.', '-', $value);
                 }
@@ -1147,8 +1164,10 @@ class helper {
     public static function get_sms_group($school) {
         $schoolno = $school->schoolno;
         $safeguard = get_config('tool_smsimport', 'safeguard');
+
         if (!empty(self::$smsgroups[$schoolno])) {
             $smsgroups = self::$smsgroups[$schoolno];
+
         } else {
             $response = self::get_sms_token($school);
             if (isset($response->access_token)) {
@@ -1161,10 +1180,14 @@ class helper {
                             'CURLOPT_HTTPHEADER' => [
                                 $authorization,
                                 $appid,
+                                "Content-Type: application/json",
+                                "IncludeCaregivers: True",
+                                "IncludeGroups: True",
                             ],
                         ];
                         $year = date('Y');
                         $result = json_decode($curl->get($response->getgroups."/".$year, null, $post));
+
                         if ($result && count($result) >= $safeguard) {
                             foreach ($result as $key => $value) {
                                 $gidnumber = $school->schoolno.$value->GroupNo;
@@ -1181,6 +1204,7 @@ class helper {
                 self::$smsgroups[$schoolno] = $smsgroups;
             }
         }
+
         if (!empty($smsgroups)) {
             return $smsgroups;
         } else {
@@ -1198,6 +1222,7 @@ class helper {
             // Throwing an exception in the task will mean that it isn't removed from the queue and is tried again.
             throw new \moodle_exception($logrecord->other);
         }
+
     }
 
     /**
@@ -1412,7 +1437,10 @@ class helper {
         $h = str_replace('profile_field_', '', $h);
         // Etap.
         $h = str_replace('mlep', '', $h);
-        if ($h == 'lastname') {
+        if ($h == 'preferredfirstnames') {
+            $h = 'firstname';
+        }
+        if ($h == 'lastname' || $h == 'preferredsurname') {
             $h = 'surname';
         }
         if ($h == 'date of birth' || $h == 'dateofbirth') {
@@ -1421,7 +1449,7 @@ class helper {
         if ($h == 'suspend') {
             $h = 'suspended';
         }
-        if ($h == 'nsn' || $h == 'studentnsn') {
+        if ($h == 'nsn' || $h == 'studentnsn' || $h == 'nationalstudentnumber') {
             $h = 'national student number';
         }
         if ($h == 'dob') {
@@ -1430,11 +1458,11 @@ class helper {
         if ($h == 'ethnicity') {
             $h = 'profile_field_'.$h;
         }
-        if ($h == 'year' || $h == 'groupmembership') {
+        if ($h == 'year' || $h == 'groupmembership' || $h == 'yearlevel') {
             $h = 'year';
             $h = 'profile_field_'.$h;
         }
-        if ($h == 'room' || $h == 'homegroup') {
+        if ($h == 'room' || $h == 'homegroup' || $h == 'groups') {
             $h = 'room';
             $h = 'profile_field_'.$h;
         }
@@ -1454,7 +1482,6 @@ class helper {
      * @throws moodle_exception
      */
     public static function parse_data($data, $options, $school) {
-        global $DB;
         $required = [
             "firstname" => 1,
             "surname" => 1,
@@ -1539,7 +1566,6 @@ class helper {
                         if ($options['source'] == 'web' && $label == 'profile_field_room') {
                             // Create group if it does not exist.
                             $courseid = get_config('tool_smsimport', 'smscourse');
-                            $schoolname = $DB->get_field('cohort', 'name', ['id' => $school->cohortid]);
                             $groupname = $value;
                             $groupid = groups_get_group_by_name($courseid, $groupname);
                             if (empty($groupid)) {
@@ -1573,6 +1599,7 @@ class helper {
                 $users[] = $user;
                 unset ($user);
             }
+
         }
 
         return $users;
@@ -1599,9 +1626,13 @@ class helper {
                         'CURLOPT_HTTPHEADER' => [
                             $authorization,
                             $appid,
+                            "Content-Type: application/json",
+                            "IncludeCaregivers: True",
+                            "IncludeGroups: True",
                         ],
                     ];
-                    $data = json_decode($curl->get($response->getusers, null, $options));
+                    $year = date('Y');
+                    $data = json_decode($curl->get($response->getusers."/".$year, null, $options));
                     if (!empty($data)) {
                         $options = [
                             'format' => 'json',

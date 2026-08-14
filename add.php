@@ -26,11 +26,7 @@ use tool_smsimport\local\form\add_school_form;
 use tool_smsimport\local\helper;
 
 require_once('../../../config.php');
-
 require_once($CFG->libdir . '/adminlib.php');
-
-defined('MOODLE_INTERNAL') || die();
-admin_externalpage_setup('tool_smsimport_index');
 
 global $PAGE;
 

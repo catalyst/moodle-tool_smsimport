@@ -30,75 +30,82 @@ if ($hassiteconfig) {
 
     // Plugin category inside Admin tools navigation.
     $ADMIN->add('tools', new admin_category('tool_smsimport',
-    get_string('pluginname', 'tool_smsimport', null, true)));
+        get_string('pluginname', 'tool_smsimport', null, true)));
 
     // Plugin setting page.
     $page = new admin_settingpage('tool_smsimport_managesms',
-    get_string('managesms', 'tool_smsimport', null, true));
+        get_string('managesms', 'tool_smsimport', null, true));
     $ADMIN->add('tool_smsimport', $page);
 
     // Plugin listing page.
-    $ADMIN->add('tool_smsimport', new admin_externalpage('tool_smsimport_sms',
-    get_string('addsms', 'tool_smsimport'),
-    new moodle_url('/admin/tool/smsimport/addsms.php')));
+    $ADMIN->add('tool_smsimport', new admin_externalpage('tool_smsimport_addsms',
+        get_string('addsms', 'tool_smsimport'),
+        new moodle_url('/admin/tool/smsimport/addsms.php')));
 
     // Plugin listing page.
     $ADMIN->add('tool_smsimport', new admin_externalpage('tool_smsimport_index',
-    get_string('managesmsschools', 'tool_smsimport'),
-    new moodle_url('/admin/tool/smsimport/index.php')));
-
-    // Define plugin settings page.
-    $options = [];
-    foreach (get_courses() as $course) {
-        if ($course->visible == 1 && $course->category) {
-            $options[$course->id] = ucwords($course->shortname);
-        }
-    }
-    $page->add(new admin_setting_configselect('tool_smsimport/smscourse',
-    new lang_string('smscourse', 'tool_smsimport'), new lang_string('smscourse_help', 'tool_smsimport'), 1, $options));
-
-    $customfields = [];
-    $fields = $DB->get_records('user_info_field', null, 'sortorder ASC');
-    foreach ($fields as $field) {
-        $customfields[$field->shortname] = $field->name;
-    }
-    $page->add(new admin_setting_configmultiselect('tool_smsimport/smsuserfields',
-    new lang_string('smsuserfields', 'tool_smsimport'), new lang_string('smsuserfields_help', 'tool_smsimport'),
-    '', $customfields));
-
-    $page->add(new admin_setting_configtext('tool_smsimport/safeguard',
-    new lang_string('safeguard', 'tool_smsimport'), new lang_string('safeguard_help', 'tool_smsimport'),
-    1, PARAM_INT));
-
-    global $DB;
-    $getroles = $DB->get_records('role', null, '', 'id, shortname');
-    $roles = [];
-    foreach ($getroles as $role) {
-        $roles[$role->id] = $role->shortname;
-    }
-    $page->add(new admin_setting_configselect('tool_smsimport/smsteacherrole',
-    new lang_string('smsteacherrole', 'tool_smsimport'),
-    new lang_string('smsteacherrole_help', 'tool_smsimport'), 'teacher', $roles));
-
-    $page->add(new admin_setting_configselect('tool_smsimport/smsstudentrole',
-    new lang_string('smsstudentrole', 'tool_smsimport'),
-    new lang_string('smsstudentrole_help', 'tool_smsimport'), 'student', $roles));
-
-
-    $auths = core_component::get_plugin_list('auth');
-    $authoptions = [];
-    foreach ($auths as $auth => $unused) {
-        $authinst = get_auth_plugin($auth);
-        if (is_enabled_auth($auth)) {
-            $authoptions[$auth] = $auth;
-        }
-    }
-    $page->add(new admin_setting_configselect('tool_smsimport/smscsvuploadauth',
-    new lang_string('smscsvuploadauth', 'tool_smsimport'),
-    new lang_string('smscsvuploadauth_help', 'tool_smsimport'), 'manual', $authoptions));
+        get_string('managesmsschools', 'tool_smsimport'),
+        new moodle_url('/admin/tool/smsimport/index.php')));
 
     // Plugin upload page.
     $ADMIN->add('tool_smsimport', new admin_externalpage('tool_smsimport_upload',
-    get_string('uploadusers', 'tool_smsimport'),
-    new moodle_url('/admin/tool/smsimport/upload.php')));
+        get_string('uploadusers', 'tool_smsimport'),
+        new moodle_url('/admin/tool/smsimport/upload.php')));
+
+    if ($ADMIN->fulltree && !during_initial_install()) {
+
+        $options = [0 => 'None'];
+        foreach (get_courses() as $course) {
+            if ($course->visible == 1 && $course->category) {
+                $options[$course->id] = ucwords($course->shortname);
+            }
+        }
+        $page->add(new admin_setting_configselect('tool_smsimport/smscourse',
+            new lang_string('smscourse', 'tool_smsimport'),
+            new lang_string('smscourse_help', 'tool_smsimport'), 0, $options));
+
+        global $DB;
+
+        $customfields = [0 => 'None'];
+        $fields = $DB->get_records('user_info_field', null, 'sortorder ASC');
+        foreach ($fields as $field) {
+            $customfields[$field->shortname] = $field->name;
+        }
+        $page->add(new admin_setting_configmultiselect('tool_smsimport/smsuserfields',
+            new lang_string('smsuserfields', 'tool_smsimport'),
+            new lang_string('smsuserfields_help', 'tool_smsimport'), [0], $customfields));
+
+        $page->add(new admin_setting_configtext('tool_smsimport/safeguard',
+            new lang_string('safeguard', 'tool_smsimport'),
+            new lang_string('safeguard_help', 'tool_smsimport'), 1, PARAM_INT));
+
+        $getroles = $DB->get_records('role', null, '', 'id, shortname');
+        $roles = [];
+        foreach ($getroles as $role) {
+            $roles[$role->id] = $role->shortname;
+        }
+        $page->add(new admin_setting_configselect('tool_smsimport/smsteacherrole',
+            new lang_string('smsteacherrole', 'tool_smsimport'),
+            new lang_string('smsteacherrole_help', 'tool_smsimport'), 4, $roles));
+
+        $page->add(new admin_setting_configselect('tool_smsimport/smsstudentrole',
+            new lang_string('smsstudentrole', 'tool_smsimport'),
+            new lang_string('smsstudentrole_help', 'tool_smsimport'), 5, $roles));
+
+        $auths = core_component::get_plugin_list('auth');
+        $authoptions = [];
+        foreach ($auths as $auth => $unused) {
+            if (is_enabled_auth($auth)) {
+                $authoptions[$auth] = $auth;
+            }
+        }
+        $page->add(new admin_setting_configselect('tool_smsimport/smscsvuploadauth',
+            new lang_string('smscsvuploadauth', 'tool_smsimport'),
+            new lang_string('smscsvuploadauth_help', 'tool_smsimport'), 'manual', $authoptions));
+
+        $page->add(new admin_setting_configcheckbox('tool_smsimport/disableschooltransfer',
+                new lang_string('disableschooltransfer', 'tool_smsimport'),
+                new lang_string('disableschooltransfer_help', 'tool_smsimport'), 1)
+        );
+    }
 }

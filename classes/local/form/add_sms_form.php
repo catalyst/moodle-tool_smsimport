@@ -41,13 +41,22 @@ class add_sms_form extends moodleform {
      * SMS form definition.
      */
     public function definition() {
-
+        global $DB;
         $mform = $this->_form;
-
         $mform->addElement('textarea', 'smsconfig', get_string("smsconfig", "tool_smsimport"),
-        'wrap="virtual" rows="20" cols="50"');
-        $mform->addHelpButton('smsconfig', 'smsconfig', 'tool_smsimport');
-
+        'wrap="virtual" rows="5" cols="50"');
+        $records = $DB->get_records('tool_smsimport');
+        $output = get_string('smsconfigdesc', 'tool_smsimport');
+        if ($records) {
+            $output .= '<br>'. get_string('smscurrentlyconfig', 'tool_smsimport');
+            foreach ($records as $record) {
+                $output .= '<br>'.$record->name .'<br> - '.
+                $record->url1. '<br> - ' .
+                $record->url2 . '<br> - ' .
+                $record->url3;
+            }
+        }
+        $mform->addElement('static', 'static', '', $output);
         $this->add_action_buttons();
     }
 }
